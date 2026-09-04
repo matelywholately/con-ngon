@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useT } from '@/i18n';
-import { formatCountdown } from '@/lib/format';
 import { minutesRemaining, urgencyOf, type Urgency } from '@/lib/safety';
 import { radius, space, type, urgencyColor, useTheme } from '@/theme';
 
@@ -50,10 +49,19 @@ export function Countdown({
   const urgency: Urgency = urgencyOf(deadline, new Date());
   const tone = urgencyColor(colors, urgency);
 
+  // Three scales, three strings. Interpolating a "1:09" clock into a
+  // "{n} minutes" template reads as nonsense in both languages.
   const label =
     urgency === 'expired'
       ? t.discover.expired
-      : f(t.discover.minutesLeft, { n: left < 60 ? left : formatCountdown(left) });
+      : left < 60
+        ? f(t.discover.minutesLeft, { n: left })
+        : left % 60 === 0
+          ? f(t.discover.hoursLeft, { h: Math.floor(left / 60) })
+          : f(t.discover.hoursMinutesLeft, {
+              h: Math.floor(left / 60),
+              m: left % 60,
+            });
 
   return (
     <View

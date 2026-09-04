@@ -36,9 +36,11 @@ export function OfferCard({
     ),
   );
   const isFree = listing.price_vnd === 0;
-  const off = listing.original_price_vnd
-    ? discountPercent(listing.price_vnd, listing.original_price_vnd)
-    : null;
+  // A free meal already says everything; "Free −100%" is just noise.
+  const off =
+    listing.original_price_vnd && !isFree
+      ? discountPercent(listing.price_vnd, listing.original_price_vnd)
+      : null;
 
   return (
     <Pressable

@@ -55,6 +55,8 @@ export const vi = {
     locationNeededBody: 'Bật vị trí để xem đồ ăn trong bán kính đi bộ.',
     enableLocation: 'Bật vị trí',
     minutesLeft: 'Còn {n} phút',
+    hoursMinutesLeft: 'Còn {h} giờ {m} phút',
+    hoursLeft: 'Còn {h} giờ',
     expired: 'Hết giờ',
     portionsLeft: 'Còn {n} suất',
     walkAway: 'Đi bộ {n} phút',

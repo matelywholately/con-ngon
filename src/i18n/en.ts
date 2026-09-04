@@ -53,6 +53,8 @@ export const en: Dictionary = {
     locationNeededBody: 'Turn on location to see food within walking distance.',
     enableLocation: 'Turn on location',
     minutesLeft: '{n} min left',
+    hoursMinutesLeft: '{h}h {m}m left',
+    hoursLeft: '{h}h left',
     expired: 'Window closed',
     portionsLeft: '{n} left',
     walkAway: '{n} min walk',

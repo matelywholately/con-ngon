@@ -57,9 +57,10 @@ export default function OfferDetail() {
 
   const isFree = listing.price_vnd === 0;
   const soldOut = listing.portions_left <= 0;
-  const off = listing.original_price_vnd
-    ? discountPercent(listing.price_vnd, listing.original_price_vnd)
-    : null;
+  const off =
+    listing.original_price_vnd && !isFree
+      ? discountPercent(listing.price_vnd, listing.original_price_vnd)
+      : null;
 
   const ctaLabel = !window.isCollectable
     ? t.offer.expiredCta
