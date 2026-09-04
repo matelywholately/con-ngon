@@ -1,25 +1,103 @@
 {
   "expo": {
-    "name": "con-ngon",
+    "name": "Còn Ngon",
     "slug": "con-ngon",
-    "version": "1.0.0",
+    "scheme": "conngon",
+    "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "locales": {
+      "vi": "./src/i18n/metadata/vi.json",
+      "en": "./src/i18n/metadata/en.json"
+    },
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F1F3EE"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "vn.conngon.app",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "CFBundleAllowMixedLocalizations": true
+      }
     },
     "android": {
+      "package": "vn.conngon.app",
+      "edgeToEdgeEnabled": true,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#1E5C44",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "config": {
+        "googleMaps": {
+          "apiKey": "$GOOGLE_MAPS_ANDROID_KEY"
+        }
+      }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Còn Ngon dùng vị trí của bạn để tìm đồ ăn còn ngon ở gần — chỉ khi bạn đang mở ứng dụng."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Nhà hàng dùng camera để quét mã lấy đồ của khách."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Chọn ảnh món ăn để đăng suất còn dư.",
+          "cameraPermission": "Chụp ảnh món ăn để đăng suất còn dư."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#F1F3EE",
+          "dark": {
+            "backgroundColor": "#0D1210"
+          }
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {}
     }
   }
 }
