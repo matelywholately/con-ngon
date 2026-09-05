@@ -74,7 +74,28 @@ This logic lives in two places that must stay in sync:
 - **TypeScript**, strict, with `noUncheckedIndexedAccess`
 - **Supabase** — Postgres 17 + PostGIS, phone OTP auth, RLS on every table
 - **expo-maps** (Google Maps on Android, Apple Maps on iOS), expo-camera for
-  QR handover, Be Vietnam Pro for Vietnamese diacritics
+  QR handover, expo-linear-gradient, Be Vietnam Pro for Vietnamese diacritics
+
+## Design
+
+The interface follows Too Good To Go's visual language: deep teal (`#00615F`)
+on a warm off-white ground (`#F9F3F0`), an image-led feed, generous radii,
+soft elevation in place of hairline borders, pill controls and a floating tab
+bar. Everything routes through `src/theme/tokens.ts`.
+
+Two rules constrain the palette, and they are product decisions rather than
+taste:
+
+- **Amber belongs to the countdown alone.** Scarcity is what makes the model
+  work, so nothing else competes for that colour — a discount badge is teal,
+  because "70% off" must not rhyme with "18 minutes left".
+- **There is no charity styling.** A subsidised eater and a paying eater see
+  identical screens; the credit is applied at checkout and appears on neither
+  the account screen nor the pass.
+
+Because a kitchen at closing time will skip the camera, a listing without a
+photograph is a first-class case: `DishImage` falls back to a warm gradient
+tile keyed to the listing id, so it reads as food rather than a broken image.
 
 ## Running it
 
@@ -110,13 +131,18 @@ npm run check    # typecheck + tests; run before committing
 app/                     Expo Router routes
   (auth)/                onboarding, phone OTP
   (eater)/               discover, map, orders, profile
+                         map.web.tsx — expo-maps is native-only and throws
+                         when a browser evaluates its import
   (partner)/             today, new listing, orders board, handover
   offer/ reserve/ pass/  the eater's purchase flow
   safety.tsx             the food safety guide, linked from every listing
 src/
   lib/safety.ts          pickup-deadline computation  ← the core
+  lib/discover.ts        feed search and filter rules, pure and tested
   lib/queries.ts         data access; same shape on Supabase or fixtures
-  lib/format.ts          VND, distance, countdown, phone normalisation
+  lib/format.ts          VND, distance, countdown, phone, Vietnamese folding
+  components/            Card, Chip, Button, Field, SearchBar, Countdown,
+                         DishImage, TabBar, Screen, OfferCard
   i18n/                  vi.ts is the source; en.ts is typed against it
   theme/                 design tokens, light and dark
   features/              session, location

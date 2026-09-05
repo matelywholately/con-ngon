@@ -1,17 +1,21 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { Card } from '@/components/Card';
+import { Tag } from '@/components/Chip';
 import { EmptyState, Screen, ScreenTitle } from '@/components/Screen';
+import { useTabBarClearance } from '@/components/TabBar';
 import { useSession } from '@/features/session';
 import { useT } from '@/i18n';
 import { formatPickupCode, formatTime, formatVnd } from '@/lib/format';
 import { fetchPartnerOrders } from '@/lib/queries';
 import type { PartnerOrder } from '@/lib/types';
-import { radius, space, type, useTheme } from '@/theme';
+import { font, radius, space, type, useTheme } from '@/theme';
 
 /** Who is on the way, and the code each of them will say at the counter. */
 export default function PartnerOrders() {
   const { colors } = useTheme();
   const { t, f } = useT();
+  const clearance = useTabBarClearance();
   const { user } = useSession();
   const [orders, setOrders] = useState<PartnerOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,15 +47,21 @@ export default function PartnerOrders() {
       <FlatList
         data={orders}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: clearance }]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <EmptyState title={t.partner.ordersTitle} body={t.partner.noOrders} />
+          <EmptyState
+            icon="account-clock-outline"
+            title={t.partner.ordersTitle}
+            body={t.partner.noOrders}
+          />
         }
         renderItem={({ item }) => (
-          <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.line }]}>
-            <View style={[styles.code, { backgroundColor: colors.brandSoft }]}>
-              <Text style={[styles.codeText, { color: colors.brandInk }]}>
+          <Card padded={false} style={styles.row}>
+            {/* The code is what the whole interaction turns on, so it is set
+                at the same weight as a price and nothing sits above it. */}
+            <View style={[styles.code, { backgroundColor: colors.brand }]}>
+              <Text style={[styles.codeText, { color: colors.onBrand }]}>
                 {formatPickupCode(item.pickup_code)}
               </Text>
             </View>
@@ -62,12 +72,14 @@ export default function PartnerOrders() {
               <Text style={[type.small, { color: colors.inkMuted }]} numberOfLines={1}>
                 {item.listing_title} · {f(t.offer.portions, { n: item.portions })}
               </Text>
-              <Text style={[type.small, { color: colors.inkFaint }]}>
-                {formatTime(new Date(item.reserved_at))} ·{' '}
-                {item.price_paid_vnd === 0 ? t.common.free : formatVnd(item.price_paid_vnd)}
-              </Text>
+              <View style={styles.metaRow}>
+                <Tag label={formatTime(new Date(item.reserved_at))} icon="clock-outline" />
+                <Text style={[type.smallStrong, styles.amount, { color: colors.ink }]}>
+                  {item.price_paid_vnd === 0 ? t.common.free : formatVnd(item.price_paid_vnd)}
+                </Text>
+              </View>
             </View>
-          </View>
+          </Card>
         )}
       />
     </Screen>
@@ -76,25 +88,27 @@ export default function PartnerOrders() {
 
 const styles = StyleSheet.create({
   centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { gap: space.md, paddingBottom: space.xxl, flexGrow: 1 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
-    padding: space.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-  },
+  list: { gap: space.md, flexGrow: 1 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md },
   code: {
     paddingHorizontal: space.md,
-    paddingVertical: space.sm,
-    borderRadius: radius.md,
+    paddingVertical: space.md,
+    borderRadius: radius.sm,
   },
   codeText: {
-    fontFamily: 'BeVietnamPro_800ExtraBold',
-    fontSize: 22,
+    fontFamily: font.extrabold,
+    fontSize: 24,
+    lineHeight: 30,
     letterSpacing: 2,
     fontVariant: ['tabular-nums'],
   },
   detail: { flex: 1, gap: 2 },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: space.sm,
+    marginTop: space.xs,
+  },
+  amount: { fontVariant: ['tabular-nums'] },
 });

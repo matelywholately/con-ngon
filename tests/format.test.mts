@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   discountPercent,
+  foldVi,
   formatCountdown,
   formatDistance,
   formatPickupCode,
@@ -65,4 +66,19 @@ test('invalid phone numbers are rejected rather than guessed at', () => {
   assert.equal(normalisePhone('0112345678'), null);
   assert.equal(normalisePhone('091234567'), null);
   assert.equal(normalisePhone('abc'), null);
+});
+
+test('Vietnamese search folds tones, horns and the d-stroke', () => {
+  assert.equal(foldVi('Bún chả nướng than'), 'bun cha nuong than');
+  assert.equal(foldVi('Đậu phụ sốt cà chua'), 'dau phu sot ca chua');
+  assert.equal(foldVi('  Sữa chua nếp cẩm  '), 'sua chua nep cam');
+  // Already-plain input is left alone, so an English query still matches.
+  assert.equal(foldVi('Banh Mi'), 'banh mi');
+});
+
+test('folded search matches a query typed without diacritics', () => {
+  const haystack = foldVi('Cơm rang dưa bò');
+  assert.ok(haystack.includes(foldVi('com rang')));
+  assert.ok(haystack.includes(foldVi('DƯA BÒ')));
+  assert.ok(!haystack.includes(foldVi('bun cha')));
 });

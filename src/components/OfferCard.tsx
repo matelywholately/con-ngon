@@ -1,11 +1,12 @@
-import { Image } from 'expo-image';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Countdown } from './Countdown';
+import { DishImage } from './DishImage';
+import { Tag } from './Chip';
 import { useT } from '@/i18n';
 import {
   discountPercent,
   formatDistance,
-  formatTime,
   formatVnd,
   walkMinutes,
 } from '@/lib/format';
@@ -18,6 +19,11 @@ import { radius, space, type, useTheme } from '@/theme';
  * It deliberately shows the dish name, not a category, and the portion count,
  * not a "bag". Someone deciding whether to spend their last 30.000₫ should
  * not have to gamble on what is inside.
+ *
+ * The layout is now image-led rather than a thumbnail beside a paragraph: the
+ * picture is the reason anyone stops scrolling, and at 92px it was too small
+ * to be that reason. The countdown moves on top of it, where it is the first
+ * thing read, and the price sits alone below a rule so it is the last.
  */
 export function OfferCard({
   listing,
@@ -26,7 +32,7 @@ export function OfferCard({
   listing: NearbyListing;
   onPress: () => void;
 }) {
-  const { colors } = useTheme();
+  const { colors, shadow } = useTheme();
   const { t, f } = useT();
 
   const deadline = new Date(
@@ -51,52 +57,56 @@ export function OfferCard({
       }, ${listing.restaurant_name}`}
       style={({ pressed }) => [
         styles.card,
-        {
-          backgroundColor: colors.surface,
-          borderColor: colors.line,
-          opacity: pressed ? 0.9 : 1,
-        },
+        shadow.e2,
+        { backgroundColor: colors.surface, opacity: pressed ? 0.92 : 1 },
       ]}
     >
-      <View style={[styles.thumb, { backgroundColor: colors.surfaceAlt }]}>
-        {listing.photo_url ? (
-          <Image
-            source={{ uri: listing.photo_url }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            transition={150}
-          />
-        ) : (
-          <Text style={[type.label, { color: colors.inkFaint }]}>ẢNH MÓN</Text>
-        )}
+      <View style={styles.imageWrap}>
+        <DishImage
+          photoUrl={listing.photo_url}
+          seed={listing.id}
+          handling={listing.handling_class}
+          vegetarian={listing.is_vegetarian}
+          round="xs"
+          scrim
+          style={styles.image}
+        />
+        <View style={styles.imageTop}>
+          <Countdown deadline={deadline} onImage />
+          {listing.is_vegetarian ? (
+            <Tag label={t.offer.vegetarian} tone="onImage" icon="leaf" />
+          ) : null}
+        </View>
       </View>
 
       <View style={styles.body}>
-        <View style={styles.topRow}>
-          <Countdown deadline={deadline} />
-          {listing.is_vegetarian ? (
-            <View style={[styles.tag, { backgroundColor: colors.brandSoft }]}>
-              <Text style={[type.label, { color: colors.brandInk }]}>
-                {t.offer.vegetarian.toUpperCase()}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-
-        <Text style={[type.heading, { color: colors.ink }]} numberOfLines={1}>
+        <Text style={[type.title, { color: colors.ink }]} numberOfLines={1}>
           {listing.title}
         </Text>
-        <Text style={[type.small, { color: colors.inkMuted }]} numberOfLines={1}>
-          {listing.restaurant_name}
-        </Text>
 
-        <View style={styles.metaRow}>
-          <Text style={[type.small, { color: colors.inkFaint }]} numberOfLines={1}>
-            {formatDistance(listing.distance_m)} ·{' '}
-            {f(t.discover.walkAway, { n: walkMinutes(listing.distance_m) })} ·{' '}
-            {f(t.discover.portionsLeft, { n: listing.portions_left })}
+        <View style={styles.placeRow}>
+          <View style={[styles.placeMark, { backgroundColor: colors.brandSoft }]}>
+            <MaterialCommunityIcons
+              name="storefront-outline"
+              size={13}
+              color={colors.brandInk}
+            />
+          </View>
+          <Text
+            style={[type.small, styles.placeName, { color: colors.inkMuted }]}
+            numberOfLines={1}
+          >
+            {listing.restaurant_name}
           </Text>
         </View>
+
+        <Text style={[type.small, { color: colors.inkFaint }]} numberOfLines={1}>
+          {formatDistance(listing.distance_m)} ·{' '}
+          {f(t.discover.walkAway, { n: walkMinutes(listing.distance_m) })} ·{' '}
+          {f(t.discover.portionsLeft, { n: listing.portions_left })}
+        </Text>
+
+        <View style={[styles.rule, { backgroundColor: colors.lineSoft }]} />
 
         <View style={styles.priceRow}>
           <Text
@@ -109,19 +119,13 @@ export function OfferCard({
             {isFree ? t.common.free : formatVnd(listing.price_vnd)}
           </Text>
           {listing.original_price_vnd && !isFree ? (
-            <Text
-              style={[type.small, styles.struck, { color: colors.inkFaint }]}
-            >
+            <Text style={[type.small, styles.struck, { color: colors.inkFaint }]}>
               {formatVnd(listing.original_price_vnd)}
             </Text>
           ) : null}
-          {off !== null ? (
-            <Text style={[type.small, { color: colors.brandInk }]}>−{off}%</Text>
-          ) : null}
           <View style={styles.spacer} />
-          <Text style={[type.small, { color: colors.inkFaint }]}>
-            {formatTime(new Date(listing.prepared_at))}
-          </Text>
+          {/* Teal, not amber: amber belongs to the countdown alone. */}
+          {off !== null ? <Tag label={`−${off}%`} tone="solid" /> : null}
         </View>
       </View>
     </Pressable>
@@ -129,30 +133,35 @@ export function OfferCard({
 }
 
 const styles = StyleSheet.create({
-  card: {
+  card: { borderRadius: radius.lg, overflow: 'hidden' },
+  imageWrap: { position: 'relative' },
+  image: { height: 164, borderRadius: 0 },
+  imageTop: {
+    position: 'absolute',
+    top: space.md,
+    left: space.md,
+    right: space.md,
     flexDirection: 'row',
-    gap: space.md,
-    padding: space.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: space.sm,
   },
-  thumb: {
-    width: 92,
-    height: 92,
-    borderRadius: radius.md,
-    overflow: 'hidden',
+  body: { padding: space.lg, gap: space.xs + 1 },
+  placeRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  placeMark: {
+    width: 22,
+    height: 22,
+    borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  body: { flex: 1, gap: 3, justifyContent: 'center' },
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginBottom: 2 },
-  tag: { paddingHorizontal: space.sm, paddingVertical: 3, borderRadius: radius.sm },
-  metaRow: { marginTop: 1 },
+  placeName: { flexShrink: 1 },
+  rule: { height: StyleSheet.hairlineWidth, marginTop: space.md - 1 },
   priceRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     gap: space.sm,
-    marginTop: space.xs,
+    marginTop: space.md - 3,
   },
   price: { fontVariant: ['tabular-nums'] },
   struck: { textDecorationLine: 'line-through' },

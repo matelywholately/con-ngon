@@ -1,14 +1,16 @@
 import { useState } from 'react';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { Button } from '@/components/Button';
 import { Field } from '@/components/Field';
-import { Screen, ScreenTitle } from '@/components/Screen';
+import { Screen, ScreenTitle, StickyFooter } from '@/components/Screen';
+import { useTabBarClearance } from '@/components/TabBar';
 import { useSession } from '@/features/session';
 import { useT } from '@/i18n';
 import { collectOrder } from '@/lib/queries';
-import { radius, space, type, useTheme } from '@/theme';
+import { overlay, radius, space, type, useTheme } from '@/theme';
 
 /**
  * Handover at the counter.
@@ -21,6 +23,7 @@ import { radius, space, type, useTheme } from '@/theme';
 export default function VerifyPickup() {
   const { colors } = useTheme();
   const { t, f } = useT();
+  const clearance = useTabBarClearance();
   const { user } = useSession();
 
   const [code, setCode] = useState('');
@@ -57,17 +60,23 @@ export default function VerifyPickup() {
     setScanning(true);
   };
 
+  const ok = result?.kind === 'ok';
+
   return (
     <Screen edges={['top']}>
       <ScreenTitle title={t.partner.verifyTitle} subtitle={t.partner.enterCode} />
 
       {scanning ? (
-        <View style={styles.scanner}>
+        <View style={[styles.scanner, { marginBottom: clearance }]}>
           <CameraView
             style={StyleSheet.absoluteFill}
             barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
             onBarcodeScanned={({ data }) => void verify(data.slice(-4))}
           />
+          {/* A frame to aim at, rather than a bare camera feed. */}
+          <View style={styles.reticle} pointerEvents="none">
+            <View style={[styles.reticleBox, { borderColor: colors.onImage }]} />
+          </View>
         </View>
       ) : (
         <View style={styles.form}>
@@ -87,16 +96,19 @@ export default function VerifyPickup() {
             <View
               style={[
                 styles.result,
-                {
-                  backgroundColor:
-                    result.kind === 'ok' ? colors.brandSoft : colors.dangerSoft,
-                },
+                { backgroundColor: ok ? colors.brandSoft : colors.dangerSoft },
               ]}
             >
+              <MaterialCommunityIcons
+                name={ok ? 'check-circle' : 'alert-circle-outline'}
+                size={26}
+                color={ok ? colors.brandInk : colors.danger}
+              />
               <Text
                 style={[
                   type.heading,
-                  { color: result.kind === 'ok' ? colors.brandInk : colors.danger },
+                  styles.resultText,
+                  { color: ok ? colors.brandInk : colors.danger },
                 ]}
               >
                 {result.kind === 'ok'
@@ -108,21 +120,31 @@ export default function VerifyPickup() {
         </View>
       )}
 
-      <View style={styles.footer}>
+      <StickyFooter>
         {scanning ? (
-          <Button label={t.common.cancel} variant="secondary" onPress={() => setScanning(false)} />
+          <Button
+            label={t.common.cancel}
+            variant="secondary"
+            onPress={() => setScanning(false)}
+          />
         ) : (
           <>
             <Button
               label={t.partner.verifyTitle}
+              icon="check-circle"
               onPress={() => void verify(code)}
               disabled={code.length < 4}
               loading={busy}
             />
-            <Button label={t.partner.scanInstead} variant="secondary" onPress={startScan} />
+            <Button
+              label={t.partner.scanInstead}
+              icon="qrcode-scan"
+              variant="secondary"
+              onPress={startScan}
+            />
           </>
         )}
-      </View>
+      </StickyFooter>
     </Screen>
   );
 }
@@ -133,8 +155,30 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: radius.lg,
     overflow: 'hidden',
-    backgroundColor: '#000',
+    backgroundColor: overlay.camera,
   },
-  result: { padding: space.lg, borderRadius: radius.lg },
-  footer: { marginTop: 'auto', gap: space.sm, paddingVertical: space.lg },
+  reticle: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reticleBox: {
+    width: '62%',
+    aspectRatio: 1,
+    borderWidth: 3,
+    borderRadius: radius.lg,
+    opacity: 0.85,
+  },
+  result: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    padding: space.lg,
+    borderRadius: radius.lg,
+  },
+  resultText: { flex: 1 },
 });

@@ -1,6 +1,11 @@
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { HIT_SIZE, radius, space, type, useTheme } from '@/theme';
 
+/**
+ * Inputs are recessed rather than outlined — a filled well on the warm ground
+ * reads as "type here" without a border competing with the rounded cards
+ * around it. The border comes back only to carry an error.
+ */
 export function Field({
   label,
   value,
@@ -41,8 +46,8 @@ export function Field({
           type.body,
           styles.input,
           {
-            backgroundColor: colors.surface,
-            borderColor: error ? colors.danger : colors.line,
+            backgroundColor: colors.surfaceSunken,
+            borderColor: error ? colors.danger : 'transparent',
             color: colors.ink,
           },
         ]}
@@ -56,6 +61,11 @@ export function Field({
   );
 }
 
+/**
+ * A row of pills, one of which is on. Used for portion counts, payment
+ * methods and the handling class, which is the most consequential choice in
+ * the app — so it is a set of visible options rather than a picker.
+ */
 export function Choice<T extends string>({
   label,
   options,
@@ -67,7 +77,9 @@ export function Choice<T extends string>({
   value: T;
   onChange: (next: T) => void;
 }) {
-  const { colors } = useTheme();
+  const { colors, shadow } = useTheme();
+  const activeHint = options.find((o) => o.value === value)?.hint;
+
   return (
     <View style={styles.wrap}>
       <Text style={[type.label, { color: colors.inkFaint }]}>
@@ -85,9 +97,9 @@ export function Choice<T extends string>({
               style={[
                 type.bodyStrong,
                 styles.choice,
+                selected ? null : shadow.e1,
                 {
                   backgroundColor: selected ? colors.brand : colors.surface,
-                  borderColor: selected ? colors.brand : colors.line,
                   color: selected ? colors.onBrand : colors.ink,
                 },
               ]}
@@ -97,29 +109,28 @@ export function Choice<T extends string>({
           );
         })}
       </View>
-      {options.find((o) => o.value === value)?.hint ? (
-        <Text style={[type.small, { color: colors.inkFaint }]}>
-          {options.find((o) => o.value === value)?.hint}
-        </Text>
+      {activeHint ? (
+        <Text style={[type.small, { color: colors.inkFaint }]}>{activeHint}</Text>
       ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: space.xs + 2 },
+  wrap: { gap: space.sm },
   input: {
-    minHeight: HIT_SIZE,
+    minHeight: 52,
     borderRadius: radius.md,
-    borderWidth: 1,
-    paddingHorizontal: space.md,
+    borderWidth: 1.5,
+    paddingHorizontal: space.lg,
+    outlineWidth: 0,
   },
   choices: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   choice: {
-    borderRadius: radius.md,
-    borderWidth: 1,
-    paddingHorizontal: space.md,
+    borderRadius: radius.pill,
+    paddingHorizontal: space.lg,
     paddingVertical: space.md,
     overflow: 'hidden',
+    minHeight: HIT_SIZE - 8,
   },
 });

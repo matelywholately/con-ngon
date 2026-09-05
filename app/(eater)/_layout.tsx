@@ -1,55 +1,61 @@
 import { Tabs } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { TabIcon, useTabBarScreenOptions } from '@/components/TabBar';
 import { useT } from '@/i18n';
-import { font, useTheme } from '@/theme';
 
 export default function EaterLayout() {
-  const { colors } = useTheme();
   const { t } = useT();
+  const tabBar = useTabBarScreenOptions();
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.brand,
-        tabBarInactiveTintColor: colors.inkFaint,
-        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.line },
-        tabBarLabelStyle: { fontFamily: font.medium, fontSize: 11 },
-      }}
-    >
+    <Tabs screenOptions={{ headerShown: false, ...tabBar }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: t.discover.title,
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="bowl-mix-outline" color={color} size={size} />
+          title: t.tabs.discover,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon
+              icon="bowl-mix-outline"
+              iconActive="bowl-mix"
+              color={color}
+              focused={focused}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="map"
         options={{
-          title: t.discover.mapTab,
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="map-outline" color={color} size={size} />
+          title: t.tabs.map,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon icon="map-outline" iconActive="map" color={color} focused={focused} />
           ),
         }}
       />
       <Tabs.Screen
         name="orders"
         options={{
-          title: t.orders.title,
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="ticket-confirmation-outline" color={color} size={size} />
+          title: t.tabs.orders,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon
+              icon="ticket-confirmation-outline"
+              iconActive="ticket-confirmation"
+              color={color}
+              focused={focused}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: t.profile.title,
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="account-outline" color={color} size={size} />
+          title: t.tabs.account,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon
+              icon="account-outline"
+              iconActive="account"
+              color={color}
+              focused={focused}
+            />
           ),
         }}
       />

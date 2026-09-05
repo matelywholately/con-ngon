@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '@/components/Button';
+import { Card } from '@/components/Card';
+import { Tag } from '@/components/Chip';
 import { Countdown } from '@/components/Countdown';
+import { DishImage } from '@/components/DishImage';
 import { EmptyState, Screen, ScreenTitle } from '@/components/Screen';
+import { useTabBarClearance } from '@/components/TabBar';
 import { useSession } from '@/features/session';
 import { useT } from '@/i18n';
 import { formatVnd } from '@/lib/format';
@@ -15,6 +20,7 @@ export default function PartnerToday() {
   const { colors } = useTheme();
   const { t, f } = useT();
   const router = useRouter();
+  const clearance = useTabBarClearance();
   const { user, setActiveRole } = useSession();
 
   const [listings, setListings] = useState<NearbyListing[]>([]);
@@ -52,36 +58,63 @@ export default function PartnerToday() {
 
   return (
     <Screen edges={['top']}>
-      <ScreenTitle title={t.partner.todayTitle} />
-
-      {/* Money recovered is the number that keeps a manager listing tomorrow,
-          so it leads. */}
-      <View style={styles.stats}>
-        <View style={[styles.stat, { backgroundColor: colors.surface, borderColor: colors.line }]}>
-          <Text style={[type.label, { color: colors.inkFaint }]}>
-            {t.partner.revenueToday.toUpperCase()}
-          </Text>
-          <Text style={[type.numeric, styles.figure, { color: colors.ink }]}>
-            {formatVnd(recovered)}
-          </Text>
-        </View>
-        <View style={[styles.stat, { backgroundColor: colors.surface, borderColor: colors.line }]}>
-          <Text style={[type.label, { color: colors.inkFaint }]}>
-            {t.partner.liveListings.toUpperCase()}
-          </Text>
-          <Text style={[type.numeric, styles.figure, { color: colors.ink }]}>
-            {f(t.offer.portions, { n: portionsLive })}
-          </Text>
-        </View>
-      </View>
+      <ScreenTitle
+        title={t.partner.todayTitle}
+        trailing={
+          <Button
+            label={t.profile.switchToEater}
+            variant="ghost"
+            size="md"
+            onPress={() => {
+              setActiveRole('eater');
+              router.replace('/(eater)');
+            }}
+          />
+        }
+      />
 
       <FlatList
         data={listings}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: clearance }]}
         showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            {/* Money recovered is the number that keeps a manager listing
+                tomorrow, so it leads — and it is the only figure on the
+                screen set in the brand colour. */}
+            <Card style={[styles.stat, styles.statPrimary, { backgroundColor: colors.brand }]}>
+              <Text style={[type.label, { color: colors.brandSoft }]}>
+                {t.partner.revenueToday.toUpperCase()}
+              </Text>
+              <Text style={[type.numericLg, styles.figure, { color: colors.onBrand }]}>
+                {formatVnd(recovered)}
+              </Text>
+            </Card>
+            <Card style={styles.stat}>
+              <Text style={[type.label, { color: colors.inkFaint }]}>
+                {t.partner.liveListings.toUpperCase()}
+              </Text>
+              <Text style={[type.numeric, styles.figure, { color: colors.ink }]}>
+                {f(t.offer.portions, { n: portionsLive })}
+              </Text>
+            </Card>
+
+            <View style={styles.newListing}>
+              <Button
+                label={t.partner.newListing}
+                icon="plus-circle-outline"
+                onPress={() => router.push('/(partner)/new')}
+              />
+            </View>
+          </View>
+        }
         ListEmptyComponent={
-          <EmptyState title={t.partner.todayTitle} body={t.partner.noListings} />
+          <EmptyState
+            icon="storefront-outline"
+            title={t.partner.todayTitle}
+            body={t.partner.noListings}
+          />
         }
         renderItem={({ item }) => {
           const deadline = new Date(
@@ -90,48 +123,71 @@ export default function PartnerToday() {
               new Date(item.safety_deadline).getTime(),
             ),
           );
+          const sold = item.portions_total - item.portions_left;
           return (
-            <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.line }]}>
-              <View style={styles.rowTop}>
-                <Countdown deadline={deadline} />
-                <Text style={[type.bodyStrong, styles.figure, { color: colors.ink }]}>
-                  {formatVnd(item.price_vnd)}
+            <Card padded={false} style={styles.row}>
+              <DishImage
+                photoUrl={item.photo_url}
+                seed={item.id}
+                handling={item.handling_class}
+                vegetarian={item.is_vegetarian}
+                round="md"
+                style={styles.thumb}
+              />
+              <View style={styles.rowBody}>
+                <Text style={[type.heading, { color: colors.ink }]} numberOfLines={1}>
+                  {item.title}
                 </Text>
+                <Countdown deadline={deadline} size="sm" />
+                {/* How much of the batch has actually moved, at a glance. */}
+                <View style={[styles.track, { backgroundColor: colors.surfaceSunken }]}>
+                  <View
+                    style={[
+                      styles.trackFill,
+                      {
+                        backgroundColor: colors.brand,
+                        width: `${
+                          item.portions_total > 0
+                            ? Math.round((sold / item.portions_total) * 100)
+                            : 0
+                        }%`,
+                      },
+                    ]}
+                  />
+                </View>
+                <View style={styles.rowMeta}>
+                  <Text style={[type.small, { color: colors.inkMuted }]}>
+                    {f(t.discover.portionsLeft, { n: item.portions_left })} /{' '}
+                    {f(t.offer.portions, { n: item.portions_total })}
+                  </Text>
+                  <Tag label={formatVnd(item.price_vnd)} />
+                </View>
               </View>
-              <Text style={[type.heading, { color: colors.ink }]} numberOfLines={1}>
-                {item.title}
-              </Text>
-              <Text style={[type.small, { color: colors.inkMuted }]}>
-                {f(t.discover.portionsLeft, { n: item.portions_left })} /{' '}
-                {f(t.offer.portions, { n: item.portions_total })}
-              </Text>
-            </View>
+            </Card>
           );
         }}
       />
-
-      <View style={styles.footer}>
-        <Button label={t.partner.newListing} onPress={() => router.push('/(partner)/new')} />
-        <Button
-          label={t.profile.switchToEater}
-          variant="ghost"
-          onPress={() => {
-            setActiveRole('eater');
-            router.replace('/(eater)');
-          }}
-        />
-      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  stats: { flexDirection: 'row', gap: space.sm, paddingBottom: space.lg },
-  stat: { flex: 1, gap: space.xs, padding: space.md, borderRadius: radius.lg, borderWidth: 1 },
+  header: { gap: space.md, paddingBottom: space.md },
+  stat: { gap: space.xs },
+  statPrimary: { gap: space.sm },
   figure: { fontVariant: ['tabular-nums'] },
-  list: { gap: space.md, paddingBottom: space.lg, flexGrow: 1 },
-  row: { gap: space.xs, padding: space.lg, borderRadius: radius.lg, borderWidth: 1 },
-  rowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  footer: { gap: space.sm, paddingVertical: space.md },
+  newListing: { paddingTop: space.xs },
+  list: { gap: space.md, flexGrow: 1 },
+  row: { flexDirection: 'row', gap: space.md, padding: space.md },
+  thumb: { width: 84, height: 84 },
+  rowBody: { flex: 1, gap: space.xs + 2 },
+  track: { height: 6, borderRadius: radius.pill, overflow: 'hidden' },
+  trackFill: { height: '100%', borderRadius: radius.pill },
+  rowMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: space.sm,
+  },
 });
