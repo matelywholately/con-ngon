@@ -1,5 +1,7 @@
 # Còn Ngon
 
+[![check](https://github.com/matelywholately/con-ngon/actions/workflows/check.yml/badge.svg)](https://github.com/matelywholately/con-ngon/actions/workflows/check.yml)
+
 > *Còn ngon* — "still good to eat."
 
 A pickup marketplace where Hanoi restaurants sell food they cooked but didn't
@@ -124,6 +126,12 @@ Expo Go.
 ```bash
 npm run check    # typecheck + tests; run before committing
 ```
+
+CI runs that exact command on every pull request and on pushes to `main`
+(`.github/workflows/check.yml`), so there is no second list of steps to keep
+in sync with this one. It pins Node 22.x: `npm test` points `node --test`
+straight at `.mts` files, which needs the unflagged TypeScript type stripping
+that arrived in 22.18.
 
 ## Layout
 

@@ -1,0 +1,44 @@
+name: check
+
+# Runs `npm run check` — the same typecheck-plus-tests command AGENTS.md
+# tells a contributor to run before committing. CI runs that one command
+# rather than its own list of steps, so the two cannot drift apart.
+
+on:
+  push:
+    branches: [main]
+  # A push to a PR branch would otherwise fire `push` and `pull_request` and
+  # bill two runs for one commit, so `push` is limited to main above.
+  pull_request:
+
+permissions:
+  contents: read
+
+# Superseded runs on the same branch are pointless once a newer commit is in.
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: typecheck + tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # `npm test` points node --test straight at .mts files, which relies
+          # on TypeScript type stripping being on without a flag. That landed
+          # in the 22 line at 22.18, so anything older fails to parse the
+          # tests rather than failing them.
+          node-version: '22.x'
+          cache: npm
+
+      # `npm ci` over `npm install`: it installs exactly the lockfile and
+      # fails if package.json and the lock have drifted, which is the check
+      # a CI run should be making anyway.
+      - run: npm ci
+
+      - run: npm run check
