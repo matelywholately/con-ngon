@@ -74,7 +74,7 @@ export default function VerifyPickup() {
             onBarcodeScanned={({ data }) => void verify(data.slice(-4))}
           />
           {/* A frame to aim at, rather than a bare camera feed. */}
-          <View style={styles.reticle} pointerEvents="none">
+          <View style={styles.reticle}>
             <View style={[styles.reticleBox, { borderColor: colors.onImage }]} />
           </View>
         </View>
@@ -158,6 +158,7 @@ const styles = StyleSheet.create({
     backgroundColor: overlay.camera,
   },
   reticle: {
+    pointerEvents: 'none',
     position: 'absolute',
     top: 0,
     left: 0,

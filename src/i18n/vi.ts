@@ -3,6 +3,8 @@
  * `en.ts` is typed against this shape, so an English translation can never
  * silently drift out of sync — a missing key is a build error.
  */
+import type { Countable } from './strings.ts';
+
 export const vi = {
   common: {
     appName: 'Còn Ngon',
@@ -58,7 +60,7 @@ export const vi = {
   },
   discover: {
     title: 'Gần bạn',
-    subtitle: 'Còn {count} suất đang bán',
+    subtitle: 'Còn {n} suất đang bán' as Countable,
     listTab: 'Danh sách',
     mapTab: 'Bản đồ',
     emptyTitle: 'Chưa có suất nào ở gần',
@@ -92,7 +94,7 @@ export const vi = {
     allergens: 'Dị ứng',
     noAllergens: 'Không có thông tin dị ứng',
     vegetarian: 'Món chay',
-    portions: '{n} suất',
+    portions: '{n} suất' as Countable,
     reserve: 'Đặt giữ suất',
     soldOut: 'Đã hết',
     expiredCta: 'Đã quá giờ lấy',
@@ -144,7 +146,7 @@ export const vi = {
     title: 'Tài khoản',
     language: 'Ngôn ngữ',
     impact: 'Đóng góp của bạn',
-    mealsSaved: '{n} suất được cứu',
+    mealsSaved: '{n} suất được cứu' as Countable,
     switchToPartner: 'Chuyển sang chế độ nhà hàng',
     switchToEater: 'Chuyển sang chế độ người mua',
   },

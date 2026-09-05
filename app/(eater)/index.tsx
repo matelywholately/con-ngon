@@ -26,7 +26,7 @@ import { space, type, useTheme } from '@/theme';
 
 export default function Discover() {
   const { colors } = useTheme();
-  const { t, f } = useT();
+  const { t, p } = useT();
   const router = useRouter();
   const location = useLocation();
   const clearance = useTabBarClearance();
@@ -152,7 +152,7 @@ export default function Discover() {
               </Card>
             ) : null}
             <Text style={[type.smallStrong, { color: colors.inkMuted }]}>
-              {f(t.discover.subtitle, { count: visible.length })}
+              {p(t.discover.subtitle, visible.length)}
             </Text>
           </View>
         }

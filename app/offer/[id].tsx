@@ -25,7 +25,7 @@ import { radius, space, type, useTheme } from '@/theme';
 
 export default function OfferDetail() {
   const { colors } = useTheme();
-  const { t, f } = useT();
+  const { t, f, p } = useT();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -162,7 +162,7 @@ export default function OfferDetail() {
               <SectionLabel label={t.offer.aboutDish} />
               <Text style={[type.body, { color: colors.ink }]}>{listing.description}</Text>
               <Tag
-                label={f(t.offer.portions, { n: listing.portions_left })}
+                label={p(t.offer.portions, listing.portions_left)}
                 tone="brand"
                 icon="silverware-fork-knife"
               />

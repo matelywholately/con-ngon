@@ -18,7 +18,7 @@ import { radius, space, type, useTheme } from '@/theme';
 
 export default function PartnerToday() {
   const { colors } = useTheme();
-  const { t, f } = useT();
+  const { t, f, p } = useT();
   const router = useRouter();
   const clearance = useTabBarClearance();
   const { user, setActiveRole } = useSession();
@@ -96,7 +96,7 @@ export default function PartnerToday() {
                 {t.partner.liveListings.toUpperCase()}
               </Text>
               <Text style={[type.numeric, styles.figure, { color: colors.ink }]}>
-                {f(t.offer.portions, { n: portionsLive })}
+                {p(t.offer.portions, portionsLive)}
               </Text>
             </Card>
 
@@ -158,7 +158,7 @@ export default function PartnerToday() {
                 <View style={styles.rowMeta}>
                   <Text style={[type.small, { color: colors.inkMuted }]}>
                     {f(t.discover.portionsLeft, { n: item.portions_left })} /{' '}
-                    {f(t.offer.portions, { n: item.portions_total })}
+                    {p(t.offer.portions, item.portions_total)}
                   </Text>
                   <Tag label={formatVnd(item.price_vnd)} />
                 </View>

@@ -54,8 +54,17 @@ floating tab bar.
   the 2h/4h food safety rule. Its intervals are mirrored in
   `supabase/migrations/0001_schema.sql`; if you change one, change both and
   update `tests/safety.test.mts`.
+- **A count that changes the wording is a `Countable`.** Vietnamese has one
+  form — "1 suất" and "6 suất" are the same word — so `vi.ts` writes a single
+  string and marks the key `as Countable`; `en.ts` then answers with
+  `{ one, other }`, and the component calls `p(t.offer.portions, n)` rather
+  than `f()`. Only mark a key when the count really changes the words:
+  "{n} min left" reads the same at 1 and at 40. `tests/i18n.test.mts` pins
+  the exact set of countable keys, so a forgotten English plural fails.
 - **Pure logic stays out of components** so it can be tested under
-  `node --test` without a React renderer.
+  `node --test` without a React renderer. In `src/i18n` that split is
+  `strings.ts` (interpolation and plural selection, testable) versus
+  `index.ts` (the locale store and the hook).
 - **RLS on every table, no exceptions.** The app holds the anon key, so
   Row Level Security is the whole authorisation layer.
 - Money is integer đồng everywhere. Never a float.

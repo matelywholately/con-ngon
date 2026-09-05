@@ -14,7 +14,7 @@ import { font, radius, space, type, useTheme } from '@/theme';
 /** Who is on the way, and the code each of them will say at the counter. */
 export default function PartnerOrders() {
   const { colors } = useTheme();
-  const { t, f } = useT();
+  const { t, p } = useT();
   const clearance = useTabBarClearance();
   const { user } = useSession();
   const [orders, setOrders] = useState<PartnerOrder[]>([]);
@@ -70,7 +70,7 @@ export default function PartnerOrders() {
                 {item.eater_name ?? '—'}
               </Text>
               <Text style={[type.small, { color: colors.inkMuted }]} numberOfLines={1}>
-                {item.listing_title} · {f(t.offer.portions, { n: item.portions })}
+                {item.listing_title} · {p(t.offer.portions, item.portions)}
               </Text>
               <View style={styles.metaRow}>
                 <Tag label={formatTime(new Date(item.reserved_at))} icon="clock-outline" />

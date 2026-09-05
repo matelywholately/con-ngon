@@ -86,7 +86,6 @@ export function DishImage({
         <LinearGradient
           colors={[overlay.scrimStrong, overlay.scrimClear]}
           style={styles.scrim}
-          pointerEvents="none"
         />
       ) : null}
     </View>
@@ -96,5 +95,12 @@ export function DishImage({
 const styles = StyleSheet.create({
   root: { overflow: 'hidden' },
   centre: { alignItems: 'center', justifyContent: 'center' },
-  scrim: { position: 'absolute', top: 0, left: 0, right: 0, height: '55%' },
+  scrim: {
+    pointerEvents: 'none',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '55%',
+  },
 });
