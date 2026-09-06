@@ -145,6 +145,68 @@ export const fixtureListings: NearbyListing[] = [
     restaurant_lng: 105.8004,
     distance_m: 1490,
   },
+  /**
+   * A second tray at the bún chả place. The map groups pins by restaurant, so
+   * this is the fixture that proves it: without it every restaurant has
+   * exactly one listing and one pin, and the grouping would look correct
+   * while never actually being exercised.
+   */
+  {
+    id: 'l1000000-0000-4000-8000-000000000006',
+    restaurant_id: DEMO_RESTAURANT_ID,
+    title: 'Nem rán cua bể',
+    description: 'Nem rán nhân cua bể, còn giòn. Ăn kèm bún chả hoặc ăn riêng.',
+    photo_url: null,
+    portions_total: 6,
+    portions_left: 3,
+    price_vnd: 18000,
+    original_price_vnd: 45000,
+    handling_class: 'hot',
+    prepared_at: minutesAgo(25),
+    pickup_from: minutesAgo(5),
+    pickup_until: minutesFromNow(85),
+    safety_deadline: minutesFromNow(155),
+    status: 'live',
+    allergens: ['cua', 'trứng', 'gluten'],
+    is_vegetarian: false,
+    created_at: minutesAgo(10),
+    restaurant_name: 'Quán Bún Chả Hàng Quạt',
+    restaurant_address: '12 Trần Thái Tông, Cầu Giấy',
+    restaurant_lat: 21.0305,
+    restaurant_lng: 105.7887,
+    distance_m: 420,
+  },
+  /**
+   * Sold out. It stays on the map as a grey pin, because "that place had
+   * something and it has gone" is worth knowing — it is the difference
+   * between a quiet neighbourhood and a fast one, and it tells you to come
+   * earlier tomorrow rather than that nobody here takes part.
+   */
+  {
+    id: 'l1000000-0000-4000-8000-000000000007',
+    restaurant_id: 'r1000000-0000-4000-8000-000000000006',
+    title: 'Xôi xéo hành phi',
+    description: 'Xôi xéo với đậu xanh và hành phi. Hết sớm, mai quay lại nhé.',
+    photo_url: null,
+    portions_total: 10,
+    portions_left: 0,
+    price_vnd: 12000,
+    original_price_vnd: 25000,
+    handling_class: 'hot',
+    prepared_at: minutesAgo(70),
+    pickup_from: minutesAgo(50),
+    pickup_until: minutesFromNow(60),
+    safety_deadline: minutesFromNow(110),
+    status: 'sold_out',
+    allergens: ['đậu xanh'],
+    is_vegetarian: true,
+    created_at: minutesAgo(65),
+    restaurant_name: 'Xôi Cô Tuyết',
+    restaurant_address: '58 Trần Thái Tông, Cầu Giấy',
+    restaurant_lat: 21.0288,
+    restaurant_lng: 105.7924,
+    distance_m: 640,
+  },
 ];
 
 export const fixtureOrders: OrderWithListing[] = [

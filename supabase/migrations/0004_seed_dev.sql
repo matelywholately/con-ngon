@@ -26,7 +26,14 @@ values
   ('r1000000-0000-4000-8000-000000000005', 'Sữa Chua Cô Hoa',
    '31 Nguyễn Khánh Toàn, Cầu Giấy', 'Cầu Giấy', '+84241234005',
    st_setsrid(st_makepoint(105.8004, 21.0349), 4326)::geography, 'approved',
-   'Tủ mát bên trong quán.')
+   'Tủ mát bên trong quán.'),
+  -- Sells out early, which is the point of seeding it: the map draws a grey
+  -- pin for a restaurant with nothing left, and that state needs to be
+  -- reachable in development without waiting for someone to buy the last one.
+  ('r1000000-0000-4000-8000-000000000006', 'Xôi Cô Tuyết',
+   '58 Trần Thái Tông, Cầu Giấy', 'Cầu Giấy', '+84241234006',
+   st_setsrid(st_makepoint(105.7924, 21.0288), 4326)::geography, 'approved',
+   'Gánh xôi đầu ngõ, cạnh hiệu thuốc.')
 on conflict (id) do nothing;
 
 -- Listings are written relative to now() so the countdowns are live and every
@@ -66,7 +73,23 @@ insert into listings (
    'Sữa chua tự làm với nếp cẩm. Bảo quản lạnh liên tục.',
    10, 4, 8000, 20000, 'chilled',
    now() - interval '300 minutes', now() - interval '180 minutes', now() + interval '180 minutes',
-   'live', array['sữa'], true);
+   'live', array['sữa'], true),
+
+  -- A second tray at the demo restaurant. The map groups pins by restaurant,
+  -- so without this every restaurant has exactly one listing and the grouping
+  -- is never actually exercised against real rows.
+  ('r1000000-0000-4000-8000-000000000001', 'Nem rán cua bể',
+   'Nem rán nhân cua bể, còn giòn. Ăn kèm bún chả hoặc ăn riêng.',
+   6, 3, 18000, 45000, 'hot',
+   now() - interval '25 minutes', now() - interval '5 minutes', now() + interval '85 minutes',
+   'live', array['cua', 'trứng', 'gluten'], false),
+
+  -- Sold out, and still on the map as a grey pin.
+  ('r1000000-0000-4000-8000-000000000006', 'Xôi xéo hành phi',
+   'Xôi xéo với đậu xanh và hành phi. Hết sớm, mai quay lại nhé.',
+   10, 0, 12000, 25000, 'hot',
+   now() - interval '70 minutes', now() - interval '50 minutes', now() + interval '60 minutes',
+   'sold_out', array['đậu xanh'], true);
 
 -- After signing in through the app once, make yourself staff at the demo
 -- restaurant so the partner side opens:

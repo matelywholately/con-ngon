@@ -124,6 +124,50 @@ export const vi = {
     soldOut: 'Có người vừa đặt hết suất này.',
     priorityWindow: 'Suất này đang ưu tiên cho người có điểm hỗ trợ. Sau {time} ai cũng đặt được.',
   },
+  /**
+   * The map tab. Distinct from `discover` because the map answers a different
+   * question — not "what is there" but "which of these is worth the walk, and
+   * how do I get there".
+   */
+  map: {
+    title: 'Bản đồ',
+    storesNearby: '{n} quán quanh đây' as Countable,
+    searchThisArea: 'Tìm ở khu vực này',
+    recentre: 'Về vị trí của tôi',
+    sortRelevance: 'Phù hợp nhất',
+    sortDistance: 'Gần nhất',
+    sortPrice: 'Rẻ nhất',
+    sortUrgency: 'Sắp hết giờ',
+    clusterCount: '{n} quán' as Countable,
+    offersHere: '{n} suất' as Countable,
+    fromPrice: 'Từ {price}',
+    soldOut: 'Đã hết',
+    soldOutBody: 'Quán này hết suất hôm nay rồi. Mai quay lại sớm hơn nhé.',
+    emptyTitle: 'Không có quán nào ở khu vực này',
+    emptyBody: 'Kéo bản đồ sang chỗ khác rồi bấm "Tìm ở khu vực này".',
+    loading: 'Đang tìm quán gần bạn…',
+    /** The web build has no real basemap — see MapCanvas.web.tsx. */
+    schematicNotice: 'Bản đồ rút gọn — bản đầy đủ có trên điện thoại',
+  },
+
+  /** The store page: one restaurant and everything it has left today. */
+  store: {
+    offersTitle: 'Còn tại quán',
+    directions: 'Chỉ đường',
+    pickupWindow: 'Giờ lấy đồ',
+    pickupWindowValue: 'Từ {from} đến {until}',
+    address: 'Địa chỉ',
+    instructions: 'Hướng dẫn lấy đồ',
+    away: 'Cách {distance} · đi bộ {n} phút',
+    modeWalking: 'Đi bộ',
+    modeTwoWheeler: 'Xe máy',
+    modeDriving: 'Ô tô',
+    notFoundTitle: 'Không tìm thấy quán',
+    notFoundBody: 'Quán này có thể đã hết suất hoặc ngừng bán hôm nay.',
+    allGone: 'Hôm nay hết suất rồi',
+    allGoneBody: 'Các suất ở đây đã có người đặt. Thử quán khác gần bạn nhé.',
+  },
+
   pass: {
     title: 'Mã lấy đồ',
     showThis: 'Đưa mã này cho nhân viên',

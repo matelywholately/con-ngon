@@ -11,21 +11,66 @@ import {
 } from './fixtures';
 import type {
   NearbyListing,
+  NearbyStoreRow,
   OrderWithListing,
   PartnerOrder,
   PaymentMethod,
 } from './types';
 import type { HandlingClass } from './safety';
 import { canReserveNow, freeTrackWindow } from './priority';
+import { distanceMetres } from './geo';
+import type { Coords } from './geo';
+import { groupByStore, listingDeadline } from './stores';
+import type { StoreMarker } from './stores';
 
-export type Coords = { lat: number; lng: number };
+/**
+ * Re-exported so the many call sites that import `Coords` from here keep
+ * working. It is defined in `geo.ts`, which is where the maths that uses it
+ * lives and which this module depends on rather than the other way round.
+ */
+export type { Coords };
+
+/**
+ * Recompute a fixture's distance from wherever the caller actually is.
+ *
+ * The fixtures ship a hardcoded `distance_m` measured from the middle of Cầu
+ * Giấy. That was fine while the only origin was the middle of Cầu Giấy, but a
+ * map you can pan has a different origin every time you let go of it — and a
+ * "search this area" button that returns the same five distances wherever you
+ * point it is theatre. Against Supabase this is `st_distance`'s job.
+ */
+function atOrigin(listings: readonly NearbyListing[], origin: Coords): NearbyListing[] {
+  return listings.map((listing) => ({
+    ...listing,
+    distance_m: distanceMetres(origin, {
+      lat: listing.restaurant_lat,
+      lng: listing.restaurant_lng,
+    }),
+  }));
+}
+
+/**
+ * The fixture equivalent of the `nearby_listings` predicate: live, with
+ * something left, and not yet past whichever deadline binds first. Kept in one
+ * place so the two paths cannot drift — a sold-out fixture that shows up in
+ * the feed on a laptop but not on a phone is the kind of difference that gets
+ * noticed only in production.
+ */
+function collectableFixtures(now: Date): NearbyListing[] {
+  return fixtureListings.filter(
+    (l) =>
+      l.status === 'live' &&
+      l.portions_left > 0 &&
+      listingDeadline(l).getTime() > now.getTime(),
+  );
+}
 
 export async function fetchNearbyListings(
   origin: Coords,
   radiusM = 1500,
 ): Promise<NearbyListing[]> {
   if (!hasSupabase) {
-    return fixtureListings
+    return atOrigin(collectableFixtures(new Date()), origin)
       .filter((l) => l.distance_m <= radiusM)
       .sort((a, b) => deadlineOf(a) - deadlineOf(b));
   }
@@ -38,6 +83,97 @@ export async function fetchNearbyListings(
   });
   if (error) throw new Error(error.message);
   return (data ?? []) as NearbyListing[];
+}
+
+/**
+ * The stores to draw on the map.
+ *
+ * Deliberately wider than `fetchNearbyListings`: a store that has sold out
+ * stays in the result, because a grey pin is information. It says this street
+ * does take part and you were simply late, which is a different message from
+ * an empty map — and it is the difference between coming back tomorrow and
+ * deciding the app has nothing near you.
+ */
+export async function fetchNearbyStores(
+  origin: Coords,
+  radiusM = 1500,
+): Promise<StoreMarker[]> {
+  if (!hasSupabase) {
+    const now = new Date();
+    const onOffer = fixtureListings.filter(
+      (l) =>
+        (l.status === 'live' || l.status === 'sold_out') &&
+        listingDeadline(l).getTime() > now.getTime(),
+    );
+    return groupByStore(atOrigin(onOffer, origin), { origin }).filter(
+      (store) => store.distance_m <= radiusM,
+    );
+  }
+
+  const { data, error } = await supabase.rpc('nearby_stores', {
+    in_lat: origin.lat,
+    in_lng: origin.lng,
+    in_radius_m: radiusM,
+    in_limit: 100,
+  });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as NearbyStoreRow[]).map(rowToStore);
+}
+
+/** One store and everything collectable there, for the store page. */
+export async function fetchStore(
+  storeId: string,
+  origin: Coords,
+): Promise<{ store: StoreMarker; listings: NearbyListing[] } | null> {
+  const listings = await fetchStoreListings(storeId, origin);
+  if (listings.length === 0) return null;
+  const [store] = groupByStore(listings, { origin });
+  return store ? { store, listings } : null;
+}
+
+async function fetchStoreListings(
+  storeId: string,
+  origin: Coords,
+): Promise<NearbyListing[]> {
+  if (!hasSupabase) {
+    const now = new Date();
+    return atOrigin(
+      fixtureListings.filter(
+        (l) =>
+          l.restaurant_id === storeId &&
+          (l.status === 'live' || l.status === 'sold_out') &&
+          listingDeadline(l).getTime() > now.getTime(),
+      ),
+      origin,
+    ).sort((a, b) => deadlineOf(a) - deadlineOf(b));
+  }
+
+  const { data, error } = await supabase.rpc('store_listings', {
+    in_restaurant_id: storeId,
+    in_lat: origin.lat,
+    in_lng: origin.lng,
+  });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as NearbyListing[];
+}
+
+/** Map the flat RPC row onto the shape the map components consume. */
+function rowToStore(row: NearbyStoreRow): StoreMarker {
+  return {
+    id: row.id,
+    name: row.name,
+    address: row.address,
+    lat: row.lat,
+    lng: row.lng,
+    distance_m: row.distance_m,
+    offerCount: row.offer_count,
+    portionsLeft: row.portions_left,
+    minPriceVnd: row.min_price_vnd,
+    bestDiscountPercent: row.best_discount_percent,
+    soonestDeadline: new Date(row.soonest_deadline),
+    available: row.portions_left > 0,
+    hasFree: row.has_free,
+  };
 }
 
 export async function fetchListing(id: string): Promise<NearbyListing | null> {

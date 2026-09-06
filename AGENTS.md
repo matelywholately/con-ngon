@@ -79,6 +79,16 @@ floating tab bar.
 - **RLS on every table, no exceptions.** The app holds the anon key, so
   Row Level Security is the whole authorisation layer.
 - Money is integer đồng everywhere. Never a float.
+- **`expo-maps` is native-only and has no web build.** It throws when a browser
+  evaluates its import, so it may only be reached through
+  `src/components/MapCanvas.tsx`, whose `.web.tsx` sibling draws a schematic
+  instead. Never `Platform.OS`-branch a native-only import; the platform file
+  is what keeps it out of the web bundle entirely.
+- **The web basemap is a review aid, not a map.** `src/lib/hanoiSchematic.ts`
+  is a simplified street plan for design review, and it says so on screen.
+  Do not grow it into something that looks authoritative, and never route by it.
+- **Geographic maths lives in `src/lib/geo.ts`**, shared by the native and web
+  canvases so a pin lands in the same place in a screenshot as on a phone.
 - **A pure module imported by a test needs explicit `.ts` extensions on its
   own value imports.** Metro guesses extensions; the Node ESM resolver that
   runs `npm test` does not, so `src/lib/discover.ts` imports `./format.ts`.

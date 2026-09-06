@@ -63,6 +63,29 @@ export type NearbyListing = Listing & {
   distance_m: number;
 };
 
+/**
+ * Shape returned by the `nearby_stores` RPC: one row per restaurant with the
+ * live offers aggregated, so the map can draw a pin without pulling every
+ * listing behind it. Snake case because it comes straight off Postgres;
+ * `queries.rowToStore` is what turns it into the camel-case `StoreMarker` the
+ * components use.
+ */
+export type NearbyStoreRow = {
+  id: string;
+  name: string;
+  address: string;
+  district: string;
+  lat: number;
+  lng: number;
+  distance_m: number;
+  offer_count: number;
+  portions_left: number;
+  min_price_vnd: number;
+  best_discount_percent: number | null;
+  soonest_deadline: string;
+  has_free: boolean;
+};
+
 export type Order = {
   id: string;
   listing_id: string;

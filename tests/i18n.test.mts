@@ -58,6 +58,9 @@ function pluralPaths(node: unknown, prefix = ''): string[] {
 test('English supplies both forms for exactly the countable keys', () => {
   assert.deepEqual(pluralPaths(en).sort(), [
     'discover.subtitle',
+    'map.clusterCount',
+    'map.offersHere',
+    'map.storesNearby',
     'offer.portions',
     'profile.mealsSaved',
   ]);

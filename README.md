@@ -120,8 +120,26 @@ cp .env.example .env     # fill in your Supabase URL and anon key
 Then apply `supabase/migrations/*.sql` in order. `0004_seed_dev.sql` is
 development data only.
 
-`expo-maps` and `expo-camera` need a development build — they do not run in
-Expo Go.
+### The map needs a development build
+
+`expo-maps` and `expo-camera` are native modules: they do not run in Expo Go.
+`expo-maps` ships no web implementation at all — its `expo-module.config.json`
+declares `["apple", "android"]` — so the browser gets the schematic described
+below instead.
+
+```bash
+npm install -g eas-cli
+eas build --profile development --platform android   # or ios
+```
+
+`eas.json` carries the profiles. Android additionally needs a Google Maps key
+in the environment the build runs in:
+
+```bash
+GOOGLE_MAPS_ANDROID_KEY=AIza...      # app.json reads it as $GOOGLE_MAPS_ANDROID_KEY
+```
+
+iOS needs no key — it draws Apple Maps through the same component.
 
 ```bash
 npm run check    # typecheck + tests; run before committing
@@ -139,24 +157,54 @@ that arrived in 22.18.
 app/                     Expo Router routes
   (auth)/                onboarding, phone OTP
   (eater)/               discover, map, orders, profile
-                         map.web.tsx — expo-maps is native-only and throws
-                         when a browser evaluates its import
   (partner)/             today, new listing, orders board, handover
   offer/ reserve/ pass/  the eater's purchase flow
+  store/[id].tsx         one restaurant, its offers, and directions to it
   safety.tsx             the food safety guide, linked from every listing
 src/
   lib/safety.ts          pickup-deadline computation  ← the core
   lib/discover.ts        feed search and filter rules, pure and tested
+  lib/geo.ts             haversine, Web Mercator, zoom-to-fit
+  lib/stores.ts          folds listings into the stores that sell them
+  lib/cluster.ts         pin clustering; expo-maps ships none
+  lib/recommend.ts       the four map sorts, relevance included
+  lib/directions.ts      the deep link into Google or Apple Maps
+  lib/hanoiSchematic.ts  Cầu Giấy's arteries, for the web basemap only
   lib/queries.ts         data access; same shape on Supabase or fixtures
   lib/format.ts          VND, distance, countdown, phone, Vietnamese folding
   components/            Card, Chip, Button, Field, SearchBar, Countdown,
-                         DishImage, TabBar, Screen, OfferCard
+                         DishImage, TabBar, Screen, OfferCard, StoreCard,
+                         StorePin, MapCanvas (+ .web.tsx — see below)
   i18n/                  vi.ts is the source; en.ts is typed against it
   theme/                 design tokens, light and dark
   features/              session, location
 supabase/migrations/     schema, RLS, transactional functions, dev seed
 tests/                   node --test over the pure modules
 ```
+
+### The map, and what the browser shows instead
+
+The map tab pins **restaurants**, not individual portions: a kitchen with two
+trays left is one pin, and the card under it says how much is inside. Pins are
+teal where there is food and grey where it has gone, they merge into a counted
+bubble as you zoom out, and the camera opens framed on the results rather than
+at a fixed zoom you then have to pinch your way out of. Tapping a pin opens the
+store page, which is where the address, the pickup window and **Chỉ đường**
+live. Directions hand off to Google or Apple Maps — routing is not a wheel
+worth reinventing, and the motorbike is the default because Hanoi is.
+
+`MapCanvas.tsx` wraps the real Google and Apple maps. `MapCanvas.web.tsx` is
+its browser sibling, and it draws a **schematic**: the arteries of Cầu Giấy
+from `hanoiSchematic.ts`, in real coordinates, projected through the same Web
+Mercator maths the phone uses, so a pin sits correctly relative to the streets
+around it. It exists because a browser here has no basemap to fetch and this
+repo's rule is that every screen stays reachable for design review without a
+backend. It is a review aid and says so on screen — it is not the shipped
+experience, and it is not something to navigate by.
+
+Everything above the basemap — the sort chips, the carousel, "search this
+area" — is ordinary React Native, so it is identical on all three platforms
+and screenshots from the browser are honest about the layout if not the map.
 
 ## Status
 

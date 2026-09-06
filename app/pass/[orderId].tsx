@@ -15,6 +15,7 @@ import { Button } from '@/components/Button';
 import { Countdown } from '@/components/Countdown';
 import { EmptyState, Screen, StickyFooter } from '@/components/Screen';
 import { useT } from '@/i18n';
+import { directionsUrl } from '@/lib/directions';
 import { formatPickupCode, pickupPassPayload } from '@/lib/format';
 import { fetchMyOrders } from '@/lib/queries';
 import type { OrderWithListing } from '@/lib/types';
@@ -85,14 +86,10 @@ export default function PickupPass() {
   );
 
   const openDirections = () => {
-    const { lat, lng } = order.listing.restaurant;
-    const label = encodeURIComponent(order.listing.restaurant.name);
-    const url = Platform.select({
-      ios: `maps://?daddr=${lat},${lng}&q=${label}`,
-      android: `geo:${lat},${lng}?q=${lat},${lng}(${label})`,
-      default: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
-    });
-    void Linking.openURL(url);
+    const { lat, lng, name } = order.listing.restaurant;
+    const platform =
+      Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
+    void Linking.openURL(directionsUrl({ lat, lng, label: name }, platform));
   };
 
   return (

@@ -59,6 +59,13 @@
         }
       ],
       [
+        "expo-maps",
+        {
+          "requestLocationPermission": true,
+          "locationPermission": "Còn Ngon hiển thị vị trí của bạn trên bản đồ để bạn biết quán nào đi bộ được."
+        }
+      ],
+      [
         "expo-camera",
         {
           "cameraPermission": "Nhà hàng dùng camera để quét mã lấy đồ của khách."
