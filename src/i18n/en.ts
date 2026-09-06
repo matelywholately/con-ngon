@@ -98,6 +98,9 @@ export const en: Dictionary = {
     originalPrice: 'Was {price}',
     placeSection: 'Where to collect',
     aboutDish: 'About this meal',
+    priorityTag: 'Priority',
+    priorityUntil: 'This free portion is held for people with support credit until {time}.',
+    priorityOpensAt: 'Opens to everyone at {time}',
   },
   reserve: {
     title: 'Reserve',
@@ -115,6 +118,7 @@ export const en: Dictionary = {
     failedTitle: "Couldn't reserve",
     tooLate: 'This meal just passed its pickup window.',
     soldOut: 'Someone just took the last portion.',
+    priorityWindow: 'This portion is held for people with support credit. It opens to everyone at {time}.',
   },
   pass: {
     title: 'Pickup code',

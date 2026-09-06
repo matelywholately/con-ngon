@@ -34,7 +34,10 @@ floating tab bar.
 - **No charity styling.** A subsidised eater and a paying eater see identical
   screens. The credit is applied at checkout and never appears on the account
   screen or the pass — anything that marks the free track marks the person
-  using it.
+  using it. The priority window is the one thing that is shown, and it marks
+  the *listing*: everyone sees the same chip and the same explanation whether
+  or not they hold credit, and a blocked user is told why rather than meeting
+  a dead button. Never render anything that differs by the viewer's balance.
 - **Elevation is `boxShadow`**, one string across iOS, Android and web. It
   needs the New Architecture on Android, which `app.json` enables. Do not
   reintroduce `shadowOpacity`/`elevation` pairs.
@@ -61,6 +64,14 @@ floating tab bar.
   than `f()`. Only mark a key when the count really changes the words:
   "{n} min left" reads the same at 1 and at 40. `tests/i18n.test.mts` pins
   the exact set of countable keys, so a forgotten English plural fails.
+- **`src/lib/priority.ts` decides who eats.** A free listing is held for
+  credit holders for a window, then opens to everyone so nothing is wasted.
+  Like `safety.ts`, the rule is mirrored in SQL —
+  `supabase/migrations/0005_free_track_priority.sql` is the authoritative
+  copy, because `orders` has no INSERT policy and `reserve_listing` is the
+  only way an order can exist. The client copy decides what to *show*; the
+  database copy decides what to *allow*. Change one, change both, and update
+  `tests/priority.test.mts`.
 - **Pure logic stays out of components** so it can be tested under
   `node --test` without a React renderer. In `src/i18n` that split is
   `strings.ts` (interpolation and plural selection, testable) versus

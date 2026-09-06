@@ -10,8 +10,9 @@ import { Choice } from '@/components/Field';
 import { EmptyState, Screen, ScreenTitle, StickyFooter } from '@/components/Screen';
 import { useSession } from '@/features/session';
 import { useT } from '@/i18n';
-import { formatVnd } from '@/lib/format';
+import { canReserveNow, freeTrackWindow } from '@/lib/priority';
 import { fetchListing, reserveListing } from '@/lib/queries';
+import { formatTime, formatVnd } from '@/lib/format';
 import { effectiveDeadline } from '@/lib/safety';
 import type { NearbyListing, PaymentMethod } from '@/lib/types';
 import { space, type, useTheme } from '@/theme';
@@ -65,7 +66,8 @@ export default function Reserve() {
     ? (listing.original_price_vnd - listing.price_vnd) * count
     : 0;
 
-  const hasCredit = (user?.creditBalanceVnd ?? 0) >= total;
+  const credit = user?.creditBalanceVnd ?? 0;
+  const hasCredit = credit >= total;
   const deadline = effectiveDeadline(
     new Date(listing.prepared_at),
     listing.handling_class,
@@ -92,6 +94,7 @@ export default function Reserve() {
       listingId: listing.id,
       portions: count,
       paymentMethod: method,
+      creditBalanceVnd: credit,
     });
     setBusy(false);
 
@@ -101,7 +104,18 @@ export default function Reserve() {
           ? t.reserve.soldOut
           : result.reason === 'past_pickup_window'
             ? t.reserve.tooLate
-            : t.common.errorBody,
+            : result.reason === 'priority_window'
+              ? f(t.reserve.priorityWindow, {
+                  time: formatTime(
+                    freeTrackWindow({
+                      priceVnd: listing.price_vnd,
+                      listedAt: new Date(listing.created_at),
+                      deadline,
+                      now: new Date(),
+                    }).priorityUntil ?? deadline,
+                  ),
+                })
+              : t.common.errorBody,
       );
       return;
     }
@@ -186,7 +200,23 @@ export default function Reserve() {
       </ScrollView>
 
       <StickyFooter>
-        <Button label={t.reserve.confirm} icon="check-circle" onPress={submit} loading={busy} />
+        <Button
+          label={t.reserve.confirm}
+          icon="check-circle"
+          onPress={submit}
+          loading={busy}
+          disabled={
+            !canReserveNow(
+              freeTrackWindow({
+                priceVnd: listing.price_vnd,
+                listedAt: new Date(listing.created_at),
+                deadline,
+                now: new Date(),
+              }),
+              credit,
+            )
+          }
+        />
       </StickyFooter>
     </Screen>
   );

@@ -16,8 +16,10 @@ import { RoundButton, Tag } from '@/components/Chip';
 import { Countdown } from '@/components/Countdown';
 import { DishImage } from '@/components/DishImage';
 import { EmptyState, Screen, SectionLabel, StickyFooter } from '@/components/Screen';
+import { useSession } from '@/features/session';
 import { useT } from '@/i18n';
 import { discountPercent, formatTime, formatVnd } from '@/lib/format';
+import { canReserveNow, freeTrackWindow } from '@/lib/priority';
 import { fetchListing } from '@/lib/queries';
 import { listingWindow } from '@/lib/safety';
 import type { NearbyListing } from '@/lib/types';
@@ -28,6 +30,7 @@ export default function OfferDetail() {
   const { t, f, p } = useT();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user } = useSession();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [listing, setListing] = useState<NearbyListing | null>(null);
@@ -78,11 +81,22 @@ export default function OfferDetail() {
       ? discountPercent(listing.price_vnd, listing.original_price_vnd)
       : null;
 
+  const priority = freeTrackWindow({
+    priceVnd: listing.price_vnd,
+    listedAt: new Date(listing.created_at),
+    deadline: window.effectiveDeadline,
+    now: new Date(),
+  });
+  const credit = user?.creditBalanceVnd ?? 0;
+  const heldBack = !canReserveNow(priority, credit);
+
   const ctaLabel = !window.isCollectable
     ? t.offer.expiredCta
     : soldOut
       ? t.offer.soldOut
-      : t.offer.reserve;
+      : heldBack && priority.priorityUntil
+        ? f(t.offer.priorityOpensAt, { time: formatTime(priority.priorityUntil) })
+        : t.offer.reserve;
 
   return (
     <View style={[styles.root, { backgroundColor: colors.ground }]}>
@@ -138,6 +152,26 @@ export default function OfferDetail() {
             <View style={styles.spacer} />
             {off !== null ? <Tag label={`−${off}%`} tone="solid" /> : null}
           </View>
+
+          {priority.inPriorityWindow && priority.priorityUntil ? (
+            <Card tone="brand" level="none" style={styles.block}>
+              <View style={styles.safetyTop}>
+                <MaterialCommunityIcons
+                  name="hand-heart-outline"
+                  size={19}
+                  color={colors.brandInk}
+                />
+                <Text style={[type.heading, { color: colors.brandInk }]}>
+                  {t.offer.priorityTag}
+                </Text>
+              </View>
+              <Text style={[type.body, { color: colors.brandInk }]}>
+                {f(t.offer.priorityUntil, {
+                  time: formatTime(priority.priorityUntil),
+                })}
+              </Text>
+            </Card>
+          ) : null}
 
           <Card style={styles.place}>
             <View style={[styles.placeMark, { backgroundColor: colors.brandSoft }]}>
@@ -226,7 +260,7 @@ export default function OfferDetail() {
           <View style={styles.ctaButton}>
             <Button
               label={ctaLabel}
-              disabled={soldOut || !window.isCollectable}
+              disabled={soldOut || !window.isCollectable || heldBack}
               onPress={() =>
                 router.push({ pathname: '/reserve/[id]', params: { id: listing.id } })
               }

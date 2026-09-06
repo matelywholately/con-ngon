@@ -102,6 +102,9 @@ export const vi = {
     originalPrice: 'Giá gốc {price}',
     placeSection: 'Nơi lấy đồ',
     aboutDish: 'Về suất này',
+    priorityTag: 'Ưu tiên hỗ trợ',
+    priorityUntil: 'Suất miễn phí này ưu tiên cho người có điểm hỗ trợ đến {time}.',
+    priorityOpensAt: 'Mở cho mọi người lúc {time}',
   },
   reserve: {
     title: 'Đặt giữ',
@@ -119,6 +122,7 @@ export const vi = {
     failedTitle: 'Không đặt được',
     tooLate: 'Suất này vừa hết giờ lấy.',
     soldOut: 'Có người vừa đặt hết suất này.',
+    priorityWindow: 'Suất này đang ưu tiên cho người có điểm hỗ trợ. Sau {time} ai cũng đặt được.',
   },
   pass: {
     title: 'Mã lấy đồ',

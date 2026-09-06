@@ -10,6 +10,7 @@ import {
   formatVnd,
   walkMinutes,
 } from '@/lib/format';
+import { freeTrackWindow } from '@/lib/priority';
 import type { NearbyListing } from '@/lib/types';
 import { radius, space, type, useTheme } from '@/theme';
 
@@ -42,6 +43,14 @@ export function OfferCard({
     ),
   );
   const isFree = listing.price_vnd === 0;
+  // Marks the listing, not the viewer: everyone sees the same chip, whether or
+  // not they hold credit. Nothing here reveals who is on the subsidised track.
+  const priority = freeTrackWindow({
+    priceVnd: listing.price_vnd,
+    listedAt: new Date(listing.created_at),
+    deadline,
+    now: new Date(),
+  });
   // A free meal already says everything; "Free −100%" is just noise.
   const off =
     listing.original_price_vnd && !isFree
@@ -73,7 +82,9 @@ export function OfferCard({
         />
         <View style={styles.imageTop}>
           <Countdown deadline={deadline} onImage />
-          {listing.is_vegetarian ? (
+          {priority.inPriorityWindow ? (
+            <Tag label={t.offer.priorityTag} tone="onImage" icon="hand-heart-outline" />
+          ) : listing.is_vegetarian ? (
             <Tag label={t.offer.vegetarian} tone="onImage" icon="leaf" />
           ) : null}
         </View>
