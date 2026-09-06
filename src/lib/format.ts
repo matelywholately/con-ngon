@@ -88,3 +88,30 @@ export function foldVi(input: string): string {
     .toLowerCase()
     .trim();
 }
+
+/**
+ * What the pickup pass encodes into its QR code.
+ *
+ * The app's own scheme, so a staff member who scans it with a plain camera
+ * app is offered Còn Ngon rather than a meaningless string. The four digits
+ * come last on purpose: they are the payload, and putting them at the end
+ * keeps the parse trivial at the counter.
+ */
+export function pickupPassPayload(code: string): string {
+  return `conngon://pickup/${formatPickupCode(code)}`;
+}
+
+/**
+ * Pull the pickup code back out of a scanned QR.
+ *
+ * Returns null for anything that is not one of our passes — a poster, a
+ * WiFi code, someone's business card — so the counter shows "wrong code"
+ * immediately instead of sending nonsense to the server and waiting for it
+ * to come back not-found. A bare four-digit string is accepted too, so a
+ * code printed or shown some other way still scans.
+ */
+export function pickupCodeFromScan(data: string): string | null {
+  const trimmed = data.trim();
+  const match = /^(?:conngon:\/\/pickup\/)?(\d{4})$/.exec(trimmed);
+  return match ? match[1]! : null;
+}

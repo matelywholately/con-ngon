@@ -9,6 +9,7 @@ import { Screen, ScreenTitle, StickyFooter } from '@/components/Screen';
 import { useTabBarClearance } from '@/components/TabBar';
 import { useSession } from '@/features/session';
 import { useT } from '@/i18n';
+import { pickupCodeFromScan } from '@/lib/format';
 import { collectOrder } from '@/lib/queries';
 import { overlay, radius, space, type, useTheme } from '@/theme';
 
@@ -71,7 +72,12 @@ export default function VerifyPickup() {
           <CameraView
             style={StyleSheet.absoluteFill}
             barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-            onBarcodeScanned={({ data }) => void verify(data.slice(-4))}
+            onBarcodeScanned={({ data }) => {
+              // Anything that is not one of our passes is rejected here
+              // rather than sent to the server as four arbitrary characters.
+              const code = pickupCodeFromScan(data);
+              if (code) void verify(code);
+            }}
           />
           {/* A frame to aim at, rather than a bare camera feed. */}
           <View style={styles.reticle}>

@@ -9,6 +9,8 @@ import {
   formatTime,
   formatVnd,
   normalisePhone,
+  pickupCodeFromScan,
+  pickupPassPayload,
   walkMinutes,
 } from '../src/lib/format.ts';
 
@@ -81,4 +83,25 @@ test('folded search matches a query typed without diacritics', () => {
   assert.ok(haystack.includes(foldVi('com rang')));
   assert.ok(haystack.includes(foldVi('DƯA BÒ')));
   assert.ok(!haystack.includes(foldVi('bun cha')));
+});
+
+test('a pass QR round-trips through the scanner', () => {
+  for (const code of ['0421', '7318', '0000', '9999']) {
+    assert.equal(pickupCodeFromScan(pickupPassPayload(code)), code);
+  }
+  // Zero padding survives the trip, so "421" comes back as "0421".
+  assert.equal(pickupCodeFromScan(pickupPassPayload('421')), '0421');
+});
+
+test('the scanner rejects codes that are not ours', () => {
+  assert.equal(pickupCodeFromScan('https://example.com/0421'), null);
+  assert.equal(pickupCodeFromScan('WIFI:S=cafe;P=hunter2;;'), null);
+  assert.equal(pickupCodeFromScan('conngon://pickup/12345'), null);
+  assert.equal(pickupCodeFromScan('conngon://offer/0421'), null);
+  assert.equal(pickupCodeFromScan(''), null);
+});
+
+test('a bare four-digit scan is still accepted', () => {
+  assert.equal(pickupCodeFromScan('0421'), '0421');
+  assert.equal(pickupCodeFromScan('  0421  '), '0421');
 });

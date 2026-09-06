@@ -134,7 +134,7 @@ export const vi = {
     cancelOrder: 'Huỷ đơn',
     address: 'Địa chỉ',
     instructions: 'Hướng dẫn lấy đồ',
-    codeCaption: 'Đọc bốn số này ở quầy',
+    codeCaption: 'Quét mã, hoặc đọc bốn số ở quầy',
   },
   orders: {
     title: 'Đơn của tôi',

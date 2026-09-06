@@ -123,6 +123,13 @@ export const overlay = {
   slideGlyph: 'rgba(255,255,255,0.85)',
   /** Behind a live camera preview, so the corners are not a bright flash. */
   camera: '#000000',
+  /**
+   * A QR code is dark-on-light in both themes, because a barcode scanner does
+   * not have a theme. Taking these from `colors.ink` / `colors.surface` would
+   * invert the code in dark mode and stop it scanning entirely.
+   */
+  qrModule: '#1A1614',
+  qrGround: '#FFFFFF',
 } as const;
 
 /**

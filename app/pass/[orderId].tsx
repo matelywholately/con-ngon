@@ -10,14 +10,18 @@ import {
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import QRCode from 'react-native-qrcode-svg';
 import { Button } from '@/components/Button';
 import { Countdown } from '@/components/Countdown';
 import { EmptyState, Screen, StickyFooter } from '@/components/Screen';
 import { useT } from '@/i18n';
-import { formatPickupCode } from '@/lib/format';
+import { formatPickupCode, pickupPassPayload } from '@/lib/format';
 import { fetchMyOrders } from '@/lib/queries';
 import type { OrderWithListing } from '@/lib/types';
-import { font, radius, space, type, useTheme } from '@/theme';
+import { font, overlay, radius, space, type, useTheme } from '@/theme';
+
+/** Big enough to scan from across a counter without dominating the digits. */
+const QR_SIZE = 132;
 
 /** Dots rather than a dashed border: Android drops `borderStyle: 'dashed'`. */
 const TEAR_DOTS = Array.from({ length: 22 }, (_, i) => i);
@@ -30,6 +34,11 @@ const TEAR_DOTS = Array.from({ length: 22 }, (_, i) => i);
  * decoration: the shape tells someone who has never used the app what the
  * screen is for before they read a word of it, and the counter staff on the
  * other side recognise it just as fast.
+ *
+ * The QR is the shortcut, not the primary path. Reading four digits aloud
+ * across a counter beats getting a camera to focus on someone else's phone,
+ * and it still works on a cracked screen in bad light — so the digits stay
+ * the loudest thing here and the code sits above them.
  */
 export default function PickupPass() {
   const { colors, shadow } = useTheme();
@@ -94,6 +103,23 @@ export default function PickupPass() {
             <Text style={[type.label, { color: colors.brandSoft }]}>
               {t.pass.showThis.toUpperCase()}
             </Text>
+
+            {/* The panel is always white and the modules always dark, in both
+                themes: the scanner on the other side does not have one. */}
+            <View style={[styles.qrPanel, { backgroundColor: overlay.qrGround }]}>
+              <QRCode
+                value={pickupPassPayload(order.pickup_code)}
+                size={QR_SIZE}
+                color={overlay.qrModule}
+                backgroundColor={overlay.qrGround}
+                quietZone={0}
+                // Medium recovery: enough to survive a fingerprint or a glare
+                // spot without making the modules too fine to read at arm's
+                // length on a cheap screen.
+                ecl="M"
+              />
+            </View>
+
             <Text
               style={[styles.code, { color: colors.onBrand }]}
               accessibilityRole="text"
@@ -188,6 +214,10 @@ const styles = StyleSheet.create({
     gap: space.sm,
     paddingVertical: space.xl,
     paddingHorizontal: space.lg,
+  },
+  qrPanel: {
+    padding: space.md,
+    borderRadius: radius.md,
   },
   code: {
     fontSize: 66,

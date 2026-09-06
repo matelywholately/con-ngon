@@ -130,7 +130,7 @@ export const en: Dictionary = {
     cancelOrder: 'Cancel order',
     address: 'Address',
     instructions: 'Pickup instructions',
-    codeCaption: 'Read these four digits at the counter',
+    codeCaption: 'Scan the code, or read the four digits',
   },
   orders: {
     title: 'My orders',
