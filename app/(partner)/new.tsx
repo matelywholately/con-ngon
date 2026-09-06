@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '@/components/Button';
+import { Card } from '@/components/Card';
 import { Choice, Field } from '@/components/Field';
-import { Screen, ScreenTitle } from '@/components/Screen';
+import { Screen, ScreenTitle, StickyFooter } from '@/components/Screen';
+import { useTabBarClearance } from '@/components/TabBar';
 import { useSession } from '@/features/session';
 import { useT } from '@/i18n';
 import { formatTime, formatVnd } from '@/lib/format';
@@ -27,6 +30,7 @@ export default function NewListing() {
   const { colors } = useTheme();
   const { t, f } = useT();
   const router = useRouter();
+  const clearance = useTabBarClearance();
   const { user } = useSession();
 
   const [title, setTitle] = useState('');
@@ -104,7 +108,10 @@ export default function NewListing() {
 
   return (
     <Screen edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scroll, { paddingBottom: clearance }]}
+      >
         <ScreenTitle title={t.partner.newListing} />
 
         <Field
@@ -171,43 +178,58 @@ export default function NewListing() {
           value={cookedMinutesAgo}
           onChange={setCookedMinutesAgo}
           options={[
-            { value: '0', label: 'Vừa xong' },
-            { value: '30', label: '30 phút trước' },
-            { value: '60', label: '1 giờ trước' },
-            { value: '120', label: '2 giờ trước' },
+            { value: '0', label: t.partner.cookedJustNow },
+            { value: '30', label: t.partner.cooked30 },
+            { value: '60', label: t.partner.cooked60 },
+            { value: '120', label: t.partner.cooked120 },
           ]}
         />
 
+        {/* Amber, and the only amber on the screen: this is the countdown
+            the eater will see, shown to staff before they commit to it. */}
         <View style={[styles.deadline, { backgroundColor: colors.urgentSoft }]}>
-          <Text style={[type.bodyStrong, { color: colors.urgent }]}>
-            {f(t.partner.computedDeadline, { time: formatTime(deadline) })}
-          </Text>
-          <Text style={[type.small, { color: colors.urgent }]}>
-            {t.partner.computedDeadlineHint}
-          </Text>
+          <MaterialCommunityIcons name="clock-fast" size={22} color={colors.urgent} />
+          <View style={styles.deadlineText}>
+            <Text style={[type.bodyStrong, { color: colors.urgent }]}>
+              {f(t.partner.computedDeadline, { time: formatTime(deadline) })}
+            </Text>
+            <Text style={[type.small, { color: colors.urgent }]}>
+              {t.partner.computedDeadlineHint}
+            </Text>
+          </View>
         </View>
 
         {error ? (
-          <Text style={[type.body, { color: colors.danger }]}>{error}</Text>
+          <Card tone="plain" level="none" style={[styles.error, { borderColor: colors.danger }]}>
+            <Text style={[type.bodyStrong, { color: colors.danger }]}>{error}</Text>
+          </Card>
         ) : null}
       </ScrollView>
 
-      <View style={styles.footer}>
+      <StickyFooter>
         <Button
           label={busy ? t.partner.publishing : t.partner.publish}
+          icon="check-circle"
           onPress={submit}
           loading={busy}
           disabled={!ready}
         />
-      </View>
+      </StickyFooter>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { gap: space.lg, paddingBottom: space.xl },
+  scroll: { gap: space.xl },
   pair: { flexDirection: 'row', gap: space.sm },
   half: { flex: 1 },
-  deadline: { gap: space.xs, padding: space.lg, borderRadius: radius.lg },
-  footer: { paddingVertical: space.md },
+  deadline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    padding: space.lg,
+    borderRadius: radius.lg,
+  },
+  deadlineText: { flex: 1, gap: space.xs },
+  error: { borderWidth: 1.5 },
 });

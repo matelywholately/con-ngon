@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Button } from '@/components/Button';
+import { RoundButton } from '@/components/Chip';
 import { Field } from '@/components/Field';
-import { Screen, ScreenTitle } from '@/components/Screen';
+import { Screen, ScreenTitle, StickyFooter } from '@/components/Screen';
 import { useSession } from '@/features/session';
 import { useT } from '@/i18n';
 import { space } from '@/theme';
@@ -31,10 +32,19 @@ export default function VerifyScreen() {
 
   return (
     <Screen>
+      <View style={styles.nav}>
+        <RoundButton
+          icon="arrow-left"
+          accessibilityLabel={t.common.back}
+          onPress={() => router.back()}
+        />
+      </View>
+
       <ScreenTitle
         title={t.auth.otpTitle}
         subtitle={f(t.auth.otpBody, { phone: phone ?? '' })}
       />
+
       <View style={styles.form}>
         <Field
           label={t.auth.otpTitle}
@@ -49,21 +59,27 @@ export default function VerifyScreen() {
           autoFocus
         />
         <Button
+          label={t.auth.resend}
+          variant="ghost"
+          size="md"
+          onPress={() => void signInWithPhone(phone ?? '')}
+        />
+      </View>
+
+      <StickyFooter>
+        <Button
           label={t.auth.verify}
+          icon="check-circle"
           onPress={submit}
           loading={busy}
           disabled={code.length < 6}
         />
-        <Button
-          label={t.auth.resend}
-          variant="ghost"
-          onPress={() => void signInWithPhone(phone ?? '')}
-        />
-      </View>
+      </StickyFooter>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  nav: { flexDirection: 'row', paddingTop: space.sm },
   form: { gap: space.md },
 });

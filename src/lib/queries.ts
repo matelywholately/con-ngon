@@ -16,6 +16,7 @@ import type {
   PaymentMethod,
 } from './types';
 import type { HandlingClass } from './safety';
+import { canReserveNow, freeTrackWindow } from './priority';
 
 export type Coords = { lat: number; lng: number };
 
@@ -53,17 +54,35 @@ export async function fetchListing(id: string): Promise<NearbyListing | null> {
 
 export type ReserveResult =
   | { ok: true; orderId: string; pickupCode: string }
-  | { ok: false; reason: 'sold_out' | 'past_pickup_window' | 'unknown' };
+  | {
+      ok: false;
+      reason: 'sold_out' | 'past_pickup_window' | 'priority_window' | 'unknown';
+    };
 
 export async function reserveListing(args: {
   listingId: string;
   portions: number;
   paymentMethod: PaymentMethod;
+  /**
+   * Only the fixture path reads this. Against Supabase the balance is read
+   * from the profile inside `reserve_listing`, because a number the client
+   * sends about its own eligibility is not evidence of anything.
+   */
+  creditBalanceVnd: number;
 }): Promise<ReserveResult> {
   if (!hasSupabase) {
     const listing = fixtureListings.find((l) => l.id === args.listingId);
     if (!listing || listing.portions_left < args.portions) {
       return { ok: false, reason: 'sold_out' };
+    }
+    const window = freeTrackWindow({
+      priceVnd: listing.price_vnd,
+      listedAt: new Date(listing.created_at),
+      deadline: new Date(deadlineOf(listing)),
+      now: new Date(),
+    });
+    if (!canReserveNow(window, args.creditBalanceVnd)) {
+      return { ok: false, reason: 'priority_window' };
     }
     listing.portions_left -= args.portions;
     return { ok: true, orderId: 'demo-order', pickupCode: '0421' };
@@ -80,6 +99,9 @@ export async function reserveListing(args: {
     if (message.includes('sold_out')) return { ok: false, reason: 'sold_out' };
     if (message.includes('past_pickup_window')) {
       return { ok: false, reason: 'past_pickup_window' };
+    }
+    if (message.includes('priority_window')) {
+      return { ok: false, reason: 'priority_window' };
     }
     return { ok: false, reason: 'unknown' };
   }

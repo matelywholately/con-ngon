@@ -69,3 +69,49 @@ export function normalisePhone(input: string): string | null {
   if (!/^0[35789]\d{8}$/.test(local)) return null;
   return `+84${local.slice(1)}`;
 }
+
+/**
+ * Fold a Vietnamese string down to bare lowercase ASCII, for searching.
+ *
+ * Someone standing on a pavement types "bun cha", not "bún chả" — reaching
+ * for tone marks on a phone keyboard is exactly the friction this app is
+ * supposed to remove. NFD decomposition separates every vowel from its tone
+ * and its horn, so the combining marks can be stripped in one pass. Đ/đ is
+ * the one Vietnamese letter whose stroke lives inside the base glyph rather
+ * than as a combining mark, so it needs its own rule.
+ */
+export function foldVi(input: string): string {
+  return input
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, (match) => (match === 'đ' ? 'd' : 'D'))
+    .toLowerCase()
+    .trim();
+}
+
+/**
+ * What the pickup pass encodes into its QR code.
+ *
+ * The app's own scheme, so a staff member who scans it with a plain camera
+ * app is offered Còn Ngon rather than a meaningless string. The four digits
+ * come last on purpose: they are the payload, and putting them at the end
+ * keeps the parse trivial at the counter.
+ */
+export function pickupPassPayload(code: string): string {
+  return `conngon://pickup/${formatPickupCode(code)}`;
+}
+
+/**
+ * Pull the pickup code back out of a scanned QR.
+ *
+ * Returns null for anything that is not one of our passes — a poster, a
+ * WiFi code, someone's business card — so the counter shows "wrong code"
+ * immediately instead of sending nonsense to the server and waiting for it
+ * to come back not-found. A bare four-digit string is accepted too, so a
+ * code printed or shown some other way still scans.
+ */
+export function pickupCodeFromScan(data: string): string | null {
+  const trimmed = data.trim();
+  const match = /^(?:conngon:\/\/pickup\/)?(\d{4})$/.exec(trimmed);
+  return match ? match[1]! : null;
+}

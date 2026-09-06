@@ -1,15 +1,21 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Button } from '@/components/Button';
+import { Card } from '@/components/Card';
+import { Countdown } from '@/components/Countdown';
+import { DishImage } from '@/components/DishImage';
 import { Choice } from '@/components/Field';
-import { EmptyState, Screen, ScreenTitle } from '@/components/Screen';
+import { EmptyState, Screen, ScreenTitle, StickyFooter } from '@/components/Screen';
 import { useSession } from '@/features/session';
 import { useT } from '@/i18n';
-import { formatVnd } from '@/lib/format';
+import { canReserveNow, freeTrackWindow } from '@/lib/priority';
 import { fetchListing, reserveListing } from '@/lib/queries';
+import { formatTime, formatVnd } from '@/lib/format';
+import { effectiveDeadline } from '@/lib/safety';
 import type { NearbyListing, PaymentMethod } from '@/lib/types';
-import { radius, space, type, useTheme } from '@/theme';
+import { space, type, useTheme } from '@/theme';
 
 export default function Reserve() {
   const { colors } = useTheme();
@@ -45,7 +51,11 @@ export default function Reserve() {
   if (!listing) {
     return (
       <Screen>
-        <EmptyState title={t.common.errorTitle} body={t.common.errorBody} />
+        <EmptyState
+          icon="alert-circle-outline"
+          title={t.common.errorTitle}
+          body={t.common.errorBody}
+        />
       </Screen>
     );
   }
@@ -56,7 +66,13 @@ export default function Reserve() {
     ? (listing.original_price_vnd - listing.price_vnd) * count
     : 0;
 
-  const hasCredit = (user?.creditBalanceVnd ?? 0) >= total;
+  const credit = user?.creditBalanceVnd ?? 0;
+  const hasCredit = credit >= total;
+  const deadline = effectiveDeadline(
+    new Date(listing.prepared_at),
+    listing.handling_class,
+    new Date(listing.pickup_until),
+  );
 
   /**
    * Payment options are ordered by what actually works for this audience:
@@ -78,6 +94,7 @@ export default function Reserve() {
       listingId: listing.id,
       portions: count,
       paymentMethod: method,
+      creditBalanceVnd: credit,
     });
     setBusy(false);
 
@@ -87,7 +104,18 @@ export default function Reserve() {
           ? t.reserve.soldOut
           : result.reason === 'past_pickup_window'
             ? t.reserve.tooLate
-            : t.common.errorBody,
+            : result.reason === 'priority_window'
+              ? f(t.reserve.priorityWindow, {
+                  time: formatTime(
+                    freeTrackWindow({
+                      priceVnd: listing.price_vnd,
+                      listedAt: new Date(listing.created_at),
+                      deadline,
+                      now: new Date(),
+                    }).priorityUntil ?? deadline,
+                  ),
+                })
+              : t.common.errorBody,
       );
       return;
     }
@@ -96,9 +124,30 @@ export default function Reserve() {
 
   return (
     <Screen>
-      <ScreenTitle title={t.reserve.title} subtitle={listing.title} />
+      <ScreenTitle title={t.reserve.title} />
 
-      <View style={styles.form}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        {/* What you are buying stays on screen while you choose how to pay. */}
+        <Card padded={false} style={styles.summary}>
+          <DishImage
+            photoUrl={listing.photo_url}
+            seed={listing.id}
+            handling={listing.handling_class}
+            vegetarian={listing.is_vegetarian}
+            round="md"
+            style={styles.thumb}
+          />
+          <View style={styles.summaryText}>
+            <Text style={[type.heading, { color: colors.ink }]} numberOfLines={1}>
+              {listing.title}
+            </Text>
+            <Text style={[type.small, { color: colors.inkMuted }]} numberOfLines={1}>
+              {listing.restaurant_name}
+            </Text>
+            <Countdown deadline={deadline} size="sm" />
+          </View>
+        </Card>
+
         <Choice
           label={t.reserve.howMany}
           value={portions}
@@ -115,7 +164,7 @@ export default function Reserve() {
           options={methods}
         />
 
-        <View style={[styles.total, { backgroundColor: colors.surface, borderColor: colors.line }]}>
+        <Card style={styles.total}>
           <View style={styles.totalRow}>
             <Text style={[type.body, { color: colors.inkMuted }]}>{t.reserve.total}</Text>
             <Text style={[type.numeric, styles.figure, { color: colors.ink }]}>
@@ -123,9 +172,16 @@ export default function Reserve() {
             </Text>
           </View>
           {saving > 0 ? (
-            <Text style={[type.small, { color: colors.brandInk }]}>
-              {f(t.reserve.youSave, { amount: formatVnd(saving) })}
-            </Text>
+            <View style={styles.savingRow}>
+              <MaterialCommunityIcons
+                name="tag-outline"
+                size={15}
+                color={colors.brandInk}
+              />
+              <Text style={[type.smallStrong, { color: colors.brandInk }]}>
+                {f(t.reserve.youSave, { amount: formatVnd(saving) })}
+              </Text>
+            </View>
           ) : null}
           {method === 'credit' ? (
             <Text style={[type.small, { color: colors.inkFaint }]}>
@@ -134,25 +190,47 @@ export default function Reserve() {
               })}
             </Text>
           ) : null}
-        </View>
+        </Card>
 
         {error ? (
-          <Text style={[type.body, { color: colors.danger }]}>{error}</Text>
+          <Card tone="plain" level="none" style={[styles.error, { borderColor: colors.danger }]}>
+            <Text style={[type.bodyStrong, { color: colors.danger }]}>{error}</Text>
+          </Card>
         ) : null}
-      </View>
+      </ScrollView>
 
-      <View style={styles.footer}>
-        <Button label={t.reserve.confirm} onPress={submit} loading={busy} />
-      </View>
+      <StickyFooter>
+        <Button
+          label={t.reserve.confirm}
+          icon="check-circle"
+          onPress={submit}
+          loading={busy}
+          disabled={
+            !canReserveNow(
+              freeTrackWindow({
+                priceVnd: listing.price_vnd,
+                listedAt: new Date(listing.created_at),
+                deadline,
+                now: new Date(),
+              }),
+              credit,
+            )
+          }
+        />
+      </StickyFooter>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  form: { gap: space.xl },
-  total: { gap: space.xs, padding: space.lg, borderRadius: radius.lg, borderWidth: 1 },
+  scroll: { gap: space.xl, paddingBottom: space.lg },
+  summary: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md },
+  thumb: { width: 72, height: 72 },
+  summaryText: { flex: 1, gap: space.xs },
+  total: { gap: space.sm },
   totalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  savingRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs + 2 },
   figure: { fontVariant: ['tabular-nums'] },
-  footer: { marginTop: 'auto', paddingVertical: space.lg },
+  error: { borderWidth: 1.5 },
 });

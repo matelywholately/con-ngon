@@ -3,6 +3,8 @@
  * `en.ts` is typed against this shape, so an English translation can never
  * silently drift out of sync — a missing key is a build error.
  */
+import type { Countable } from './strings.ts';
+
 export const vi = {
   common: {
     appName: 'Còn Ngon',
@@ -19,6 +21,18 @@ export const vi = {
     metresShort: 'm',
     kilometresShort: 'km',
     free: 'Miễn phí',
+    search: 'Tìm kiếm',
+    clearFilters: 'Bỏ bộ lọc',
+  },
+  tabs: {
+    discover: 'Gần bạn',
+    map: 'Bản đồ',
+    orders: 'Đơn',
+    account: 'Tài khoản',
+    partnerToday: 'Hôm nay',
+    partnerNew: 'Đăng',
+    partnerOrders: 'Khách',
+    partnerVerify: 'Giao đồ',
   },
   onboarding: {
     slide1Title: 'Đồ ăn còn ngon, giá rẻ',
@@ -46,7 +60,7 @@ export const vi = {
   },
   discover: {
     title: 'Gần bạn',
-    subtitle: 'Còn {count} suất đang bán',
+    subtitle: 'Còn {n} suất đang bán' as Countable,
     listTab: 'Danh sách',
     mapTab: 'Bản đồ',
     emptyTitle: 'Chưa có suất nào ở gần',
@@ -60,6 +74,17 @@ export const vi = {
     expired: 'Hết giờ',
     portionsLeft: 'Còn {n} suất',
     walkAway: 'Đi bộ {n} phút',
+    greeting: 'Chào bạn',
+    aroundYou: 'Quanh bạn',
+    searchPlaceholder: 'Tìm món hoặc tên quán',
+    filterAll: 'Tất cả',
+    filterClosingSoon: 'Sắp hết giờ',
+    filterCheap: 'Dưới 20.000₫',
+    filterVegetarian: 'Món chay',
+    noMatchTitle: 'Không có suất nào khớp',
+    noMatchBody: 'Thử bỏ bớt bộ lọc, hoặc tìm bằng từ khác.',
+    mapUnavailable: 'Bản đồ chỉ có trên điện thoại',
+    mapUnavailableBody: 'Mở Còn Ngon trên Android hoặc iPhone để xem bản đồ. Danh sách vẫn đầy đủ ở tab Gần bạn.',
   },
   offer: {
     cookedAt: 'Nấu lúc {time}',
@@ -69,12 +94,17 @@ export const vi = {
     allergens: 'Dị ứng',
     noAllergens: 'Không có thông tin dị ứng',
     vegetarian: 'Món chay',
-    portions: '{n} suất',
+    portions: '{n} suất' as Countable,
     reserve: 'Đặt giữ suất',
     soldOut: 'Đã hết',
     expiredCta: 'Đã quá giờ lấy',
     safetyLink: 'Về an toàn thực phẩm',
     originalPrice: 'Giá gốc {price}',
+    placeSection: 'Nơi lấy đồ',
+    aboutDish: 'Về suất này',
+    priorityTag: 'Ưu tiên hỗ trợ',
+    priorityUntil: 'Suất miễn phí này ưu tiên cho người có điểm hỗ trợ đến {time}.',
+    priorityOpensAt: 'Mở cho mọi người lúc {time}',
   },
   reserve: {
     title: 'Đặt giữ',
@@ -92,6 +122,7 @@ export const vi = {
     failedTitle: 'Không đặt được',
     tooLate: 'Suất này vừa hết giờ lấy.',
     soldOut: 'Có người vừa đặt hết suất này.',
+    priorityWindow: 'Suất này đang ưu tiên cho người có điểm hỗ trợ. Sau {time} ai cũng đặt được.',
   },
   pass: {
     title: 'Mã lấy đồ',
@@ -103,6 +134,7 @@ export const vi = {
     cancelOrder: 'Huỷ đơn',
     address: 'Địa chỉ',
     instructions: 'Hướng dẫn lấy đồ',
+    codeCaption: 'Quét mã, hoặc đọc bốn số ở quầy',
   },
   orders: {
     title: 'Đơn của tôi',
@@ -118,7 +150,7 @@ export const vi = {
     title: 'Tài khoản',
     language: 'Ngôn ngữ',
     impact: 'Đóng góp của bạn',
-    mealsSaved: '{n} suất được cứu',
+    mealsSaved: '{n} suất được cứu' as Countable,
     switchToPartner: 'Chuyển sang chế độ nhà hàng',
     switchToEater: 'Chuyển sang chế độ người mua',
   },
@@ -144,6 +176,10 @@ export const vi = {
     handlingShelfStable: 'Đóng gói sẵn',
     handlingShelfStableHint: 'Còn nguyên bao bì và có hạn in trên gói.',
     preparedAt: 'Nấu xong lúc',
+    cookedJustNow: 'Vừa xong',
+    cooked30: '30 phút trước',
+    cooked60: '1 giờ trước',
+    cooked120: '2 giờ trước',
     pickupUntil: 'Nhận khách đến',
     computedDeadline: 'Hạn lấy an toàn: {time}',
     computedDeadlineHint: 'Tính tự động từ giờ nấu và cách bảo quản.',

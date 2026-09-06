@@ -17,6 +17,37 @@ If that domain is unreachable, the authoritative local substitutes are:
 - The installed packages' own `.d.ts` files, which are ground truth for the
   API surface of that specific version.
 
+## Design system
+
+The visual language follows Too Good To Go's: deep teal (`#00615F`) on a warm
+off-white ground (`#F9F3F0`), food photography carrying the page, generous
+radii, soft elevation instead of hairline borders, pill controls, and a
+floating tab bar.
+
+- **`src/theme/tokens.ts` is the only source of colour, spacing, radius,
+  elevation and type.** No hex codes, no magic numbers in a component.
+- **Amber belongs to the countdown and nothing else.** Scarcity is the
+  emotional core of the product. A discount badge is teal, because "70% off"
+  must not rhyme with "18 minutes left". The only other amber is the safety
+  guide's per-class figure and the partner's computed deadline, which are the
+  same countdown stated as a rule.
+- **No charity styling.** A subsidised eater and a paying eater see identical
+  screens. The credit is applied at checkout and never appears on the account
+  screen or the pass — anything that marks the free track marks the person
+  using it. The priority window is the one thing that is shown, and it marks
+  the *listing*: everyone sees the same chip and the same explanation whether
+  or not they hold credit, and a blocked user is told why rather than meeting
+  a dead button. Never render anything that differs by the viewer's balance.
+- **Elevation is `boxShadow`**, one string across iOS, Android and web. It
+  needs the New Architecture on Android, which `app.json` enables. Do not
+  reintroduce `shadowOpacity`/`elevation` pairs.
+- **Every listing must survive having no photograph.** `DishImage` falls back
+  to a warm gradient tile keyed to the listing id. Every fixture has
+  `photo_url: null`, so this is the path you are actually looking at.
+- **The tab bar floats**, so it no longer occupies layout space. Every
+  scrolling screen inside a tab navigator must end its content with
+  `useTabBarClearance()` padding or the last card sits under the bar.
+
 ## Conventions
 
 - **Vietnamese is the source language.** Strings are authored in
@@ -26,11 +57,39 @@ If that domain is unreachable, the authoritative local substitutes are:
   the 2h/4h food safety rule. Its intervals are mirrored in
   `supabase/migrations/0001_schema.sql`; if you change one, change both and
   update `tests/safety.test.mts`.
+- **A count that changes the wording is a `Countable`.** Vietnamese has one
+  form — "1 suất" and "6 suất" are the same word — so `vi.ts` writes a single
+  string and marks the key `as Countable`; `en.ts` then answers with
+  `{ one, other }`, and the component calls `p(t.offer.portions, n)` rather
+  than `f()`. Only mark a key when the count really changes the words:
+  "{n} min left" reads the same at 1 and at 40. `tests/i18n.test.mts` pins
+  the exact set of countable keys, so a forgotten English plural fails.
+- **`src/lib/priority.ts` decides who eats.** A free listing is held for
+  credit holders for a window, then opens to everyone so nothing is wasted.
+  Like `safety.ts`, the rule is mirrored in SQL —
+  `supabase/migrations/0005_free_track_priority.sql` is the authoritative
+  copy, because `orders` has no INSERT policy and `reserve_listing` is the
+  only way an order can exist. The client copy decides what to *show*; the
+  database copy decides what to *allow*. Change one, change both, and update
+  `tests/priority.test.mts`.
 - **Pure logic stays out of components** so it can be tested under
-  `node --test` without a React renderer.
+  `node --test` without a React renderer. In `src/i18n` that split is
+  `strings.ts` (interpolation and plural selection, testable) versus
+  `index.ts` (the locale store and the hook).
 - **RLS on every table, no exceptions.** The app holds the anon key, so
   Row Level Security is the whole authorisation layer.
 - Money is integer đồng everywhere. Never a float.
+- **A pure module imported by a test needs explicit `.ts` extensions on its
+  own value imports.** Metro guesses extensions; the Node ESM resolver that
+  runs `npm test` does not, so `src/lib/discover.ts` imports `./format.ts`.
+  Type-only imports are erased before Node sees them and do not need it.
+- **Native-only modules get a `.web.tsx` sibling, never a `Platform.OS`
+  branch.** `expo-maps` throws when the browser evaluates its import, which
+  takes down the whole web bundle before any runtime check can run — hence
+  `app/(eater)/map.tsx` and `app/(eater)/map.web.tsx`. Expo Router strips the
+  platform extension, so the two files stay one route.
+- Search is diacritic-insensitive via `foldVi`: someone standing on a
+  pavement types "bun cha", not "bún chả".
 
 ## Commands
 

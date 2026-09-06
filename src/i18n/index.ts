@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { getLocales } from 'expo-localization';
 import { en } from './en';
+import { interpolate, plural } from './strings';
 import { vi, type Dictionary } from './vi';
 
 export type Locale = 'vi' | 'en';
@@ -34,31 +35,26 @@ export function getLocale(): Locale {
   return current;
 }
 
-/** Substitutes {named} placeholders. Missing values are left visible. */
-export function interpolate(
-  template: string,
-  values?: Record<string, string | number>,
-): string {
-  if (!values) return template;
-  return template.replace(/\{(\w+)\}/g, (match, key: string) => {
-    const value = values[key];
-    return value === undefined ? match : String(value);
-  });
-}
-
 export function useLocale(): Locale {
   return useSyncExternalStore(subscribe, getLocale, getLocale);
 }
 
 /**
- * Returns the active dictionary plus a formatter for strings with
- * placeholders. Components read `t.discover.title` directly and reach for
- * `f()` only when they need substitution.
+ * Returns the active dictionary plus the two formatters. Components read
+ * `t.discover.title` directly, reach for `f()` when a string has
+ * placeholders, and for `p()` when a count decides the wording.
  */
-export function useT(): { t: Dictionary; f: typeof interpolate; locale: Locale } {
+export function useT(): {
+  t: Dictionary;
+  f: typeof interpolate;
+  p: typeof plural;
+  locale: Locale;
+} {
   const locale = useLocale();
-  return { t: DICTIONARIES[locale], f: interpolate, locale };
+  return { t: DICTIONARIES[locale], f: interpolate, p: plural, locale };
 }
 
-export { vi, en };
+export { vi, en, interpolate, plural };
+export { pluralForm } from './strings';
+export type { Countable, PluralForms } from './strings';
 export type { Dictionary };

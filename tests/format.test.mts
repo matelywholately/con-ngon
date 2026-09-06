@@ -2,12 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   discountPercent,
+  foldVi,
   formatCountdown,
   formatDistance,
   formatPickupCode,
   formatTime,
   formatVnd,
   normalisePhone,
+  pickupCodeFromScan,
+  pickupPassPayload,
   walkMinutes,
 } from '../src/lib/format.ts';
 
@@ -65,4 +68,40 @@ test('invalid phone numbers are rejected rather than guessed at', () => {
   assert.equal(normalisePhone('0112345678'), null);
   assert.equal(normalisePhone('091234567'), null);
   assert.equal(normalisePhone('abc'), null);
+});
+
+test('Vietnamese search folds tones, horns and the d-stroke', () => {
+  assert.equal(foldVi('Bún chả nướng than'), 'bun cha nuong than');
+  assert.equal(foldVi('Đậu phụ sốt cà chua'), 'dau phu sot ca chua');
+  assert.equal(foldVi('  Sữa chua nếp cẩm  '), 'sua chua nep cam');
+  // Already-plain input is left alone, so an English query still matches.
+  assert.equal(foldVi('Banh Mi'), 'banh mi');
+});
+
+test('folded search matches a query typed without diacritics', () => {
+  const haystack = foldVi('Cơm rang dưa bò');
+  assert.ok(haystack.includes(foldVi('com rang')));
+  assert.ok(haystack.includes(foldVi('DƯA BÒ')));
+  assert.ok(!haystack.includes(foldVi('bun cha')));
+});
+
+test('a pass QR round-trips through the scanner', () => {
+  for (const code of ['0421', '7318', '0000', '9999']) {
+    assert.equal(pickupCodeFromScan(pickupPassPayload(code)), code);
+  }
+  // Zero padding survives the trip, so "421" comes back as "0421".
+  assert.equal(pickupCodeFromScan(pickupPassPayload('421')), '0421');
+});
+
+test('the scanner rejects codes that are not ours', () => {
+  assert.equal(pickupCodeFromScan('https://example.com/0421'), null);
+  assert.equal(pickupCodeFromScan('WIFI:S=cafe;P=hunter2;;'), null);
+  assert.equal(pickupCodeFromScan('conngon://pickup/12345'), null);
+  assert.equal(pickupCodeFromScan('conngon://offer/0421'), null);
+  assert.equal(pickupCodeFromScan(''), null);
+});
+
+test('a bare four-digit scan is still accepted', () => {
+  assert.equal(pickupCodeFromScan('0421'), '0421');
+  assert.equal(pickupCodeFromScan('  0421  '), '0421');
 });

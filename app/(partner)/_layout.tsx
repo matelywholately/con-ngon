@@ -1,55 +1,66 @@
 import { Tabs } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { TabIcon, useTabBarScreenOptions } from '@/components/TabBar';
 import { useT } from '@/i18n';
-import { font, useTheme } from '@/theme';
 
 export default function PartnerLayout() {
-  const { colors } = useTheme();
   const { t } = useT();
+  const tabBar = useTabBarScreenOptions();
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.brand,
-        tabBarInactiveTintColor: colors.inkFaint,
-        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.line },
-        tabBarLabelStyle: { fontFamily: font.medium, fontSize: 11 },
-      }}
-    >
+    <Tabs screenOptions={{ headerShown: false, ...tabBar }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: t.partner.todayTitle,
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="storefront-outline" color={color} size={size} />
+          title: t.tabs.partnerToday,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon
+              icon="storefront-outline"
+              iconActive="storefront"
+              color={color}
+              focused={focused}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="new"
         options={{
-          title: t.partner.newListing,
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="plus-box-outline" color={color} size={size} />
+          title: t.tabs.partnerNew,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon
+              icon="plus-box-outline"
+              iconActive="plus-box"
+              color={color}
+              focused={focused}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="orders"
         options={{
-          title: t.partner.ordersTitle,
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="account-clock-outline" color={color} size={size} />
+          title: t.tabs.partnerOrders,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon
+              icon="account-clock-outline"
+              iconActive="account-clock"
+              color={color}
+              focused={focused}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="verify"
         options={{
-          title: t.partner.verifyTitle,
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="check-decagram-outline" color={color} size={size} />
+          title: t.tabs.partnerVerify,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon
+              icon="check-decagram-outline"
+              iconActive="check-decagram"
+              color={color}
+              focused={focused}
+            />
           ),
         }}
       />
