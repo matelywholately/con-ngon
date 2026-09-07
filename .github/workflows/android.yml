@@ -41,6 +41,12 @@ jobs:
     # timeout would let a hung Gradle daemon burn the afternoon.
     timeout-minutes: 45
 
+    # Job-level rather than repeated per step, because the `secrets` context is
+    # not available in a step's `if:` — only `env` is — and the key is needed
+    # by prebuild, by Gradle, and by the guard that checks it arrived.
+    env:
+      GOOGLE_MAPS_ANDROID_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_KEY }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -65,10 +71,8 @@ jobs:
       # real cause only in logcat. Warn loudly rather than fail: every other
       # screen is still worth having on a device.
       - name: Check for the Maps key
-        env:
-          MAPS_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_KEY }}
         run: |
-          if [ -z "$MAPS_KEY" ]; then
+          if [ -z "$GOOGLE_MAPS_ANDROID_KEY" ]; then
             echo "::warning title=No Google Maps key::GOOGLE_MAPS_ANDROID_KEY is not set, so the map tab will render as a blank grey grid. Add it under Settings → Secrets and variables → Actions."
             {
               echo "### ⚠️ Built without a Google Maps key"
@@ -77,22 +81,23 @@ jobs:
               echo "Add \`GOOGLE_MAPS_ANDROID_KEY\` under Settings → Secrets and variables → Actions, then re-run."
             } >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "Maps key present (${#MAPS_KEY} characters)."
+            echo "Maps key present (${#GOOGLE_MAPS_ANDROID_KEY} characters)."
           fi
 
       # Generates android/. It is gitignored, so the project stays on
       # Continuous Native Generation and nothing native is ever committed.
       # --no-install because npm ci has already done that.
       - name: Prebuild
-        env:
-          GOOGLE_MAPS_ANDROID_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_KEY }}
         run: npx expo prebuild --platform android --no-install
 
       # Fails the build if the key never reached the manifest — a silent
       # mis-wire here is exactly the bug this workflow was written after.
       - name: Verify the manifest carries a real key
-        if: ${{ secrets.GOOGLE_MAPS_ANDROID_KEY != '' }}
         run: |
+          if [ -z "$GOOGLE_MAPS_ANDROID_KEY" ]; then
+            echo "No key configured; nothing to verify."
+            exit 0
+          fi
           manifest=android/app/src/main/AndroidManifest.xml
           if grep -q 'com.google.android.geo.API_KEY' "$manifest" \
              && grep -A1 'com.google.android.geo.API_KEY' "$manifest" | grep -q '\$'; then
@@ -104,8 +109,6 @@ jobs:
 
       - name: Assemble
         working-directory: android
-        env:
-          GOOGLE_MAPS_ANDROID_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_KEY }}
         run: ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Report what came out
