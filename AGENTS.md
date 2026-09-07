@@ -79,11 +79,19 @@ floating tab bar.
 - **RLS on every table, no exceptions.** The app holds the anon key, so
   Row Level Security is the whole authorisation layer.
 - Money is integer đồng everywhere. Never a float.
-- **`expo-maps` is native-only and has no web build.** It throws when a browser
-  evaluates its import, so it may only be reached through
-  `src/components/MapCanvas.tsx`, whose `.web.tsx` sibling draws a schematic
-  instead. Never `Platform.OS`-branch a native-only import; the platform file
-  is what keeps it out of the web bundle entirely.
+- **Native-only modules get a `.web.tsx` sibling, never a `Platform.OS`
+  branch.** A native-only import throws when the browser *evaluates* it, before
+  any runtime check can run, which takes down the whole web bundle rather than
+  degrading. Metro resolves the platform file first, so the native import never
+  reaches the browser at all. `expo-maps` is the case in hand: it may only be
+  reached through `src/components/MapCanvas.tsx`, whose `.web.tsx` sibling
+  draws a schematic instead.
+- **Anything that varies by environment belongs in `app.config.ts`, never in
+  `app.json`.** A static `app.json` performs no substitution, so a `"$MY_VAR"`
+  written there reaches the native manifest as those literal characters — which
+  is how the Google Maps key silently shipped a blank grey map. `app.json` is
+  the static base; `app.config.ts` overrides the dynamic keys.
+  `tests/config.test.mts` pins the resolved values.
 - **The web basemap is a review aid, not a map.** `src/lib/hanoiSchematic.ts`
   is a simplified street plan for design review, and it says so on screen.
   Do not grow it into something that looks authoritative, and never route by it.
@@ -93,11 +101,6 @@ floating tab bar.
   own value imports.** Metro guesses extensions; the Node ESM resolver that
   runs `npm test` does not, so `src/lib/discover.ts` imports `./format.ts`.
   Type-only imports are erased before Node sees them and do not need it.
-- **Native-only modules get a `.web.tsx` sibling, never a `Platform.OS`
-  branch.** `expo-maps` throws when the browser evaluates its import, which
-  takes down the whole web bundle before any runtime check can run — hence
-  `app/(eater)/map.tsx` and `app/(eater)/map.web.tsx`. Expo Router strips the
-  platform extension, so the two files stay one route.
 - Search is diacritic-insensitive via `foldVi`: someone standing on a
   pavement types "bun cha", not "bún chả".
 

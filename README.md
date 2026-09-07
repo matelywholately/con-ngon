@@ -132,14 +132,28 @@ npm install -g eas-cli
 eas build --profile development --platform android   # or ios
 ```
 
-`eas.json` carries the profiles. Android additionally needs a Google Maps key
-in the environment the build runs in:
+`eas.json` carries the profiles.
 
-```bash
-GOOGLE_MAPS_ANDROID_KEY=AIza...      # app.json reads it as $GOOGLE_MAPS_ANDROID_KEY
-```
+### Getting an installable APK without EAS
 
-iOS needs no key — it draws Apple Maps through the same component.
+`.github/workflows/android.yml` builds one on a GitHub runner and attaches it to
+the run. It fires on every push that touches the app, or from **Actions → android
+apk → Run workflow**. Download the artifact, unzip it, and install the APK;
+Android will ask you to allow installing from an unknown source.
+
+That APK is `assembleRelease`, so the JavaScript is bundled in and it opens on
+its own — no Metro server, no laptop on the same Wi-Fi. With no Supabase key set
+it runs on fixtures, which is what makes it worth handing to someone. It is
+signed with Expo's debug keystore, which is fine for a prototype and is **not**
+fine for the Play Store: publishing needs a real upload key.
+
+**Add the Maps key first.** Settings → Secrets and variables → Actions →
+`GOOGLE_MAPS_ANDROID_KEY`. Android draws Google Maps only with a valid key, and
+without one the map tab is a blank grey grid with the pins floating over
+nothing. The workflow warns in its summary rather than failing, so an APK still
+comes out — but the one screen you probably want to look at will be empty.
+
+iOS needs no key: it draws Apple Maps through the same component.
 
 ```bash
 npm run check    # typecheck + tests; run before committing

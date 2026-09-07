@@ -1,0 +1,129 @@
+name: android apk
+
+# Builds an installable Android APK and hands it back as a downloadable
+# artifact.
+#
+# This exists because there is no other route to one from this project's
+# development environment: `eas build` needs expo.dev, and a local Gradle build
+# needs an Android SDK from dl.google.com — both of which are blocked there. A
+# GitHub runner already has the SDK, so the build happens here instead.
+#
+# It is `assembleRelease` rather than `assembleDebug` on purpose. The release
+# APK has the JS bundled into it, so it opens on its own with no Metro server
+# on the same Wi-Fi — which is what makes it something you can hand to someone.
+# Expo's bare template signs `release` with the debug keystore by default, so
+# it installs without any keystore to manage. That is fine for a prototype and
+# is *not* fine for the Play Store: shipping needs a real upload key.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, 'claude/**']
+    # The APK only changes when the app does. Documentation and SQL do not
+    # justify twenty minutes of runner time.
+    paths-ignore:
+      - '**.md'
+      - 'supabase/**'
+      - '.github/workflows/check.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    name: assembleRelease
+    runs-on: ubuntu-latest
+    # A cold React Native Android build is slow, and the default 360-minute
+    # timeout would let a hung Gradle daemon burn the afternoon.
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: npm
+
+      # AGP 8.x needs a JDK newer than the runner's default. Temurin 21 is what
+      # the project's own container runs, so the two stay in step.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: npm ci
+
+      # The map is the reason this build exists, and Google Maps renders a
+      # blank grey grid without a key — pins floating over nothing, with the
+      # real cause only in logcat. Warn loudly rather than fail: every other
+      # screen is still worth having on a device.
+      - name: Check for the Maps key
+        env:
+          MAPS_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_KEY }}
+        run: |
+          if [ -z "$MAPS_KEY" ]; then
+            echo "::warning title=No Google Maps key::GOOGLE_MAPS_ANDROID_KEY is not set, so the map tab will render as a blank grey grid. Add it under Settings → Secrets and variables → Actions."
+            {
+              echo "### ⚠️ Built without a Google Maps key"
+              echo
+              echo "The APK installs and every screen works, but the **map tab will be a blank grey grid**."
+              echo "Add \`GOOGLE_MAPS_ANDROID_KEY\` under Settings → Secrets and variables → Actions, then re-run."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Maps key present (${#MAPS_KEY} characters)."
+          fi
+
+      # Generates android/. It is gitignored, so the project stays on
+      # Continuous Native Generation and nothing native is ever committed.
+      # --no-install because npm ci has already done that.
+      - name: Prebuild
+        env:
+          GOOGLE_MAPS_ANDROID_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_KEY }}
+        run: npx expo prebuild --platform android --no-install
+
+      # Fails the build if the key never reached the manifest — a silent
+      # mis-wire here is exactly the bug this workflow was written after.
+      - name: Verify the manifest carries a real key
+        if: ${{ secrets.GOOGLE_MAPS_ANDROID_KEY != '' }}
+        run: |
+          manifest=android/app/src/main/AndroidManifest.xml
+          if grep -q 'com.google.android.geo.API_KEY' "$manifest" \
+             && grep -A1 'com.google.android.geo.API_KEY' "$manifest" | grep -q '\$'; then
+            echo "::error::The Maps key reached AndroidManifest.xml unsubstituted. See app.config.ts."
+            grep -A1 'com.google.android.geo.API_KEY' "$manifest"
+            exit 1
+          fi
+          echo "Manifest key looks substituted."
+
+      - name: Assemble
+        working-directory: android
+        env:
+          GOOGLE_MAPS_ANDROID_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_KEY }}
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Report what came out
+        run: |
+          apk=$(find android/app/build/outputs/apk/release -name '*.apk' | head -1)
+          echo "APK: $apk ($(du -h "$apk" | cut -f1))"
+          {
+            echo "### APK ready"
+            echo
+            echo "\`$(basename "$apk")\` — $(du -h "$apk" | cut -f1)"
+            echo
+            echo "Download it from the **Artifacts** section of this run, unzip, and install."
+            echo "Android will ask you to allow installing from an unknown source."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: con-ngon-android-${{ github.sha }}
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 30
