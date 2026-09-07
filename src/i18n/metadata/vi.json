@@ -1,1 +1,5 @@
-{ "CFBundleDisplayName": "Còn Ngon" }
+{
+  "ios": {
+    "CFBundleDisplayName": "Còn Ngon"
+  }
+}

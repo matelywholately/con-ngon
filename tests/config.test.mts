@@ -77,3 +77,32 @@ test('the app still identifies as Còn Ngon after the dynamic override', () => {
   assert.equal(config.slug, 'con-ngon');
   assert.equal(config.scheme, 'conngon');
 });
+
+/**
+ * Store-metadata locale files, which Expo copies into *both* platforms.
+ *
+ * A key at the top level of one of these goes to iOS *and* Android. That is
+ * how `CFBundleDisplayName` — a Core Foundation key, meaningless on Android —
+ * ended up in `values-b+vi/strings.xml`, where a string with no default-locale
+ * counterpart is a fatal `ExtraTranslation` lint error. It failed the release
+ * build after forty-four minutes of native compilation, which is an expensive
+ * way to find out. Platform-specific values belong under an `ios` or `android`
+ * key, and this pins that.
+ */
+test('locale metadata scopes every value to a platform', () => {
+  const config = resolveWith(undefined) as ResolvedConfig & {
+    locales?: Record<string, string>;
+  };
+  const locales = config.locales ?? {};
+  assert.ok(Object.keys(locales).length > 0, 'expected localised store metadata');
+
+  for (const [lang, path] of Object.entries(locales)) {
+    const contents = require(join(projectRoot, path)) as Record<string, unknown>;
+    const stray = Object.keys(contents).filter((k) => k !== 'ios' && k !== 'android');
+    assert.deepEqual(
+      stray,
+      [],
+      `${lang} (${path}) puts ${stray.join(', ')} at the top level, so Expo writes it into both platforms`,
+    );
+  }
+});

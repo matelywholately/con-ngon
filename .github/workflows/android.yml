@@ -37,9 +37,11 @@ jobs:
   apk:
     name: assembleRelease
     runs-on: ubuntu-latest
-    # A cold React Native Android build is slow, and the default 360-minute
-    # timeout would let a hung Gradle daemon burn the afternoon.
-    timeout-minutes: 45
+    # A cold React Native build under the New Architecture compiles every
+    # native module's C++ from scratch and took 44 minutes on the first run,
+    # so 45 left no headroom at all. A warm Gradle cache brings it well under
+    # this; the ceiling is here to catch a hang, not to pace a normal build.
+    timeout-minutes: 60
 
     # Job-level rather than repeated per step, because the `secrets` context is
     # not available in a step's `if:` — only `env` is — and the key is needed
@@ -62,7 +64,12 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      # Without this the cache is read-only on every branch but the default
+      # one — the first run said so and then spent forty minutes compiling
+      # from cold. Seeding it here is what makes the second run quick.
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
 
       - run: npm ci
 
