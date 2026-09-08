@@ -11,7 +11,15 @@ import { useSession } from '@/features/session';
 import { useT } from '@/i18n';
 import { formatTime, formatVnd } from '@/lib/format';
 import { publishListing } from '@/lib/queries';
-import { safetyDeadline, validateListing, type HandlingClass } from '@/lib/safety';
+import {
+  PREPARED_BUCKETS,
+  bucketRemainingMinutes,
+  preparedAtFromBucket,
+  safetyDeadline,
+  type HandlingClass,
+  validateListing,
+} from '@/lib/safety';
+import type { PreparedBucketId } from '@/lib/safety';
 import { radius, space, type, useTheme } from '@/theme';
 
 /**
@@ -38,18 +46,31 @@ export default function NewListing() {
   const [price, setPrice] = useState('20000');
   const [originalPrice, setOriginalPrice] = useState('45000');
   const [handling, setHandling] = useState<HandlingClass>('hot');
-  const [cookedMinutesAgo, setCookedMinutesAgo] = useState<'0' | '30' | '60' | '120'>('0');
+  const [cookedBucket, setCookedBucket] = useState<PreparedBucketId>('under30');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * The pessimistic end of whatever range staff picked. "1 – 2 giờ" becomes
+   * two hours, not one: nobody at a counter knows the exact minute, and
+   * rounding that uncertainty towards the eater is the only direction that
+   * cannot hurt them.
+   */
   const preparedAt = useMemo(
-    () => new Date(Date.now() - Number(cookedMinutesAgo) * 60_000),
-    [cookedMinutesAgo],
+    () => preparedAtFromBucket(cookedBucket, new Date()),
+    [cookedBucket],
   );
 
   // Shown live, so staff watch the deadline move as they change the handling
   // class. It makes the rule visible instead of a surprise at publish time.
   const deadline = safetyDeadline(preparedAt, handling);
+
+  /**
+   * Whether this combination leaves any collectable time at all. Three-hour-old
+   * hot food leaves none, and the screen has to say so where the deadline
+   * would otherwise be — not print a time that has already passed.
+   */
+  const listable = bucketRemainingMinutes(cookedBucket, handling) > 0;
 
   const submit = async () => {
     const now = new Date();
@@ -175,26 +196,51 @@ export default function NewListing() {
 
         <Choice
           label={t.partner.preparedAt}
-          value={cookedMinutesAgo}
-          onChange={setCookedMinutesAgo}
-          options={[
-            { value: '0', label: t.partner.cookedJustNow },
-            { value: '30', label: t.partner.cooked30 },
-            { value: '60', label: t.partner.cooked60 },
-            { value: '120', label: t.partner.cooked120 },
-          ]}
+          value={cookedBucket}
+          onChange={setCookedBucket}
+          options={PREPARED_BUCKETS.map((bucket) => {
+            const left = bucketRemainingMinutes(bucket.id, handling);
+            return {
+              value: bucket.id,
+              label: bucketLabel(bucket.id, t),
+              // States the assumption rather than hiding it, and warns before
+              // staff fill in the rest of a listing that cannot be published.
+              hint:
+                left > 0
+                  ? f(t.partner.bucketCountedAs, { n: bucket.worstCaseMinutes })
+                  : t.partner.bucketTooOld,
+            };
+          })}
         />
 
         {/* Amber, and the only amber on the screen: this is the countdown
-            the eater will see, shown to staff before they commit to it. */}
-        <View style={[styles.deadline, { backgroundColor: colors.urgentSoft }]}>
-          <MaterialCommunityIcons name="clock-fast" size={22} color={colors.urgent} />
+            the eater will see, shown to staff before they commit to it.
+
+            Unless there is no window left at all, in which case showing a
+            clock time that has already passed — styled exactly like a valid
+            one — would read as a deadline rather than as a refusal. That case
+            is red and says what is actually wrong. */}
+        <View
+          style={[
+            styles.deadline,
+            { backgroundColor: listable ? colors.urgentSoft : colors.dangerSoft },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name={listable ? 'clock-fast' : 'alert-circle-outline'}
+            size={22}
+            color={listable ? colors.urgent : colors.danger}
+          />
           <View style={styles.deadlineText}>
-            <Text style={[type.bodyStrong, { color: colors.urgent }]}>
-              {f(t.partner.computedDeadline, { time: formatTime(deadline) })}
+            <Text
+              style={[type.bodyStrong, { color: listable ? colors.urgent : colors.danger }]}
+            >
+              {listable
+                ? f(t.partner.computedDeadline, { time: formatTime(deadline) })
+                : t.partner.noWindowLeft}
             </Text>
-            <Text style={[type.small, { color: colors.urgent }]}>
-              {t.partner.computedDeadlineHint}
+            <Text style={[type.small, { color: listable ? colors.urgent : colors.danger }]}>
+              {listable ? t.partner.computedDeadlineHint : t.partner.noWindowLeftHint}
             </Text>
           </View>
         </View>
@@ -233,3 +279,17 @@ const styles = StyleSheet.create({
   deadlineText: { flex: 1, gap: space.xs },
   error: { borderWidth: 1.5 },
 });
+
+/** The four ranges, in the partner's language. */
+function bucketLabel(id: PreparedBucketId, t: ReturnType<typeof useT>['t']): string {
+  switch (id) {
+    case 'under30':
+      return t.partner.cookedUnder30;
+    case 'under60':
+      return t.partner.cooked30to60;
+    case 'under120':
+      return t.partner.cooked1to2h;
+    case 'under180':
+      return t.partner.cooked2to3h;
+  }
+}

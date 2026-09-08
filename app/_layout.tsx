@@ -11,6 +11,7 @@ import {
   useFonts,
 } from '@expo-google-fonts/be-vietnam-pro';
 import { SessionProvider } from '@/features/session';
+import { FavouritesProvider } from '@/features/useFavourites';
 import { useTheme } from '@/theme';
 
 void SplashScreen.preventAutoHideAsync();
@@ -35,6 +36,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <SessionProvider>
+        <FavouritesProvider>
         <StatusBar style={dark ? 'light' : 'dark'} />
         <Stack
           screenOptions={{
@@ -52,6 +54,7 @@ export default function RootLayout() {
           <Stack.Screen name="pass/[orderId]" options={{ presentation: 'card' }} />
           <Stack.Screen name="safety" options={{ presentation: 'modal' }} />
         </Stack>
+      </FavouritesProvider>
       </SessionProvider>
     </SafeAreaProvider>
   );

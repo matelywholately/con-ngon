@@ -16,6 +16,25 @@ export type Profile = {
   created_at: string;
 };
 
+/**
+ * What kind of place a venue is.
+ *
+ * Mirrors the `venue_type` enum in `0008_venue_type.sql`. It exists to test
+ * the product's riskiest assumption: batch surplus comes from places that
+ * cook to a forecast (trays, bakeries, buffets, canteens, hot counters), not
+ * from kitchens that cook to order. Nullable, because an unclassified venue
+ * is missing data rather than a default one.
+ */
+export type VenueType =
+  | 'com_binh_dan'
+  | 'bakery'
+  | 'buffet'
+  | 'canteen'
+  | 'convenience'
+  | 'restaurant'
+  | 'cafe'
+  | 'street_stall';
+
 export type Restaurant = {
   id: string;
   name: string;
@@ -23,6 +42,7 @@ export type Restaurant = {
   district: string;
   phone: string | null;
   status: RestaurantStatus;
+  venue_type: VenueType | null;
   pickup_instructions: string | null;
   lat: number;
   lng: number;

@@ -21,6 +21,7 @@ import { canReserveNow, freeTrackWindow } from './priority';
 import { distanceMetres } from './geo';
 import type { Coords } from './geo';
 import { groupByStore, listingDeadline } from './stores';
+import type { Favourite } from './alerts';
 import type { StoreMarker } from './stores';
 
 /**
@@ -244,6 +245,67 @@ export async function reserveListing(args: {
 
   const order = data as { id: string; pickup_code: string };
   return { ok: true, orderId: order.id, pickupCode: order.pickup_code };
+}
+
+// ---------------------------------------------------------------- following
+
+/**
+ * Fixture-mode favourites. Module-level and mutable, exactly like the fixture
+ * portion counts: with no backend there is nowhere else for them to live, and
+ * a design review still needs the heart to stay filled after it is tapped.
+ */
+const fixtureFavourites = new Map<string, boolean>();
+
+/** The stores this person follows, and whether each may interrupt them. */
+export async function fetchFavourites(): Promise<Favourite[]> {
+  if (!hasSupabase) {
+    return [...fixtureFavourites.entries()].map(([restaurantId, notify]) => ({
+      restaurantId,
+      notify,
+    }));
+  }
+
+  const { data, error } = await supabase
+    .from('favourites')
+    .select('restaurant_id, notify');
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as { restaurant_id: string; notify: boolean }[]).map((row) => ({
+    restaurantId: row.restaurant_id,
+    notify: row.notify,
+  }));
+}
+
+/**
+ * Follow or unfollow a store. `notify` is separate on purpose: someone may
+ * want a shortlist without a phone that buzzes every evening, and treating
+ * the second as implied by the first is how an app gets muted.
+ */
+export async function setFavourite(
+  restaurantId: string,
+  following: boolean,
+  notify = true,
+): Promise<void> {
+  if (!hasSupabase) {
+    if (following) fixtureFavourites.set(restaurantId, notify);
+    else fixtureFavourites.delete(restaurantId);
+    return;
+  }
+
+  if (!following) {
+    const { error } = await supabase
+      .from('favourites')
+      .delete()
+      .eq('restaurant_id', restaurantId);
+    if (error) throw new Error(error.message);
+    return;
+  }
+
+  // The row is keyed on (profile_id, restaurant_id), and profile_id is filled
+  // by the RLS check rather than sent from here.
+  const { error } = await supabase
+    .from('favourites')
+    .upsert({ restaurant_id: restaurantId, notify }, { onConflict: 'profile_id,restaurant_id' });
+  if (error) throw new Error(error.message);
 }
 
 export async function fetchMyOrders(): Promise<OrderWithListing[]> {

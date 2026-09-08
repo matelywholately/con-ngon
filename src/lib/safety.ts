@@ -48,6 +48,71 @@ export const HANDLING_RULES: Readonly<Record<HandlingClass, HandlingRule>> = {
 
 export const MINUTE_MS = 60_000;
 
+/**
+ * How long ago the food was finished, as the partner can actually answer it.
+ *
+ * Nobody standing at a counter at closing time knows that the tray came off
+ * the heat at 18:47. They know "about an hour ago". So the question is asked
+ * as a range — and the deadline is computed from the **worst case in that
+ * range**, never the best.
+ *
+ * That distinction is the whole point. Reading "1 giờ trước" as exactly 60
+ * minutes when the partner meant "somewhere between one and two hours" hands
+ * out up to an extra hour of safe life on food that only has three hours of
+ * it. The person eating is the one who carries that error, and they are the
+ * one with no way to check it. Taking the top of the range costs the partner
+ * some sellable stock and costs the eater nothing.
+ *
+ * It does mean the oldest bucket leaves nothing at all for `hot` food, which
+ * is correct rather than unfortunate: three-hour-old rice that has sat in the
+ * danger zone is not surplus, it is waste, and `validateListing` says so.
+ */
+export type PreparedBucketId = 'under30' | 'under60' | 'under120' | 'under180';
+
+export type PreparedBucket = {
+  readonly id: PreparedBucketId;
+  /**
+   * Minutes elapsed at the pessimistic end of the range — the number the
+   * deadline is actually derived from.
+   */
+  readonly worstCaseMinutes: number;
+};
+
+export const PREPARED_BUCKETS: readonly PreparedBucket[] = [
+  { id: 'under30', worstCaseMinutes: 30 },
+  { id: 'under60', worstCaseMinutes: 60 },
+  { id: 'under120', worstCaseMinutes: 120 },
+  { id: 'under180', worstCaseMinutes: 180 },
+];
+
+export function preparedBucket(id: PreparedBucketId): PreparedBucket {
+  const bucket = PREPARED_BUCKETS.find((b) => b.id === id);
+  if (!bucket) throw new Error(`unknown prepared bucket: ${id}`);
+  return bucket;
+}
+
+/**
+ * The `prepared_at` a bucket implies: the earliest moment the food could have
+ * come off the heat, given what the partner said.
+ */
+export function preparedAtFromBucket(id: PreparedBucketId, now: Date): Date {
+  return new Date(now.getTime() - preparedBucket(id).worstCaseMinutes * MINUTE_MS);
+}
+
+/**
+ * Minutes of collectable life a bucket leaves for a handling class, at worst.
+ * Zero or less means the food cannot be listed at all — which the partner
+ * form uses to explain the refusal before they fill the rest of it in.
+ */
+export function bucketRemainingMinutes(
+  id: PreparedBucketId,
+  handling: HandlingClass,
+): number {
+  const rule = HANDLING_RULES[handling];
+  const usable = rule.maxDangerZoneMinutes - rule.consumerBufferMinutes;
+  return usable - preparedBucket(id).worstCaseMinutes;
+}
+
 /** Urgency of a listing, used for both sorting and colour. */
 export type Urgency = 'fresh' | 'soon' | 'urgent' | 'expired';
 

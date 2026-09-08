@@ -64,6 +64,16 @@ floating tab bar.
   than `f()`. Only mark a key when the count really changes the words:
   "{n} min left" reads the same at 1 and at 40. `tests/i18n.test.mts` pins
   the exact set of countable keys, so a forgotten English plural fails.
+- **A prepared-time bucket is read at its worst case.** Staff answer "how
+  long ago" as a range, and `preparedAtFromBucket` in `safety.ts` takes the
+  top of it — "1 – 2 giờ" is 120 minutes elapsed, not 60. The eater carries
+  any error in that estimate and cannot check it, so uncertainty resolves in
+  their favour. Never widen a bucket to make more stock listable.
+- **`src/lib/alerts.ts` decides what is worth interrupting someone for**, and
+  is pure and tested for that reason: quiet hours, never twice for a listing,
+  nothing that cannot be walked to in the time it has left, and a cap per
+  batch. Only the sending sits behind `AlertSender` and needs credentials.
+  Put judgement in the pure module, never in the sender.
 - **`src/lib/priority.ts` decides who eats.** A free listing is held for
   credit holders for a window, then opens to everyone so nothing is wasted.
   Like `safety.ts`, the rule is mirrored in SQL —

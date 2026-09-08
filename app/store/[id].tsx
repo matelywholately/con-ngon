@@ -16,6 +16,7 @@ import { Tag } from '@/components/Chip';
 import { MapCanvas } from '@/components/MapCanvas';
 import { OfferCard } from '@/components/OfferCard';
 import { EmptyState, Screen, SectionLabel } from '@/components/Screen';
+import { useFavourites } from '@/features/useFavourites';
 import { useLocation } from '@/features/useLocation';
 import { useT } from '@/i18n';
 import type { Cluster } from '@/lib/cluster';
@@ -43,6 +44,7 @@ export default function StoreScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const location = useLocation();
+  const { isFollowing, toggle } = useFavourites();
 
   const [store, setStore] = useState<StoreMarker | null>(null);
   const [listings, setListings] = useState<NearbyListing[]>([]);
@@ -143,7 +145,30 @@ export default function StoreScreen() {
           <View style={styles.titleRow}>
             <Text style={[type.display, styles.flex, { color: colors.ink }]}>{store.name}</Text>
             {!store.available ? <Tag label={t.map.soldOut} tone="neutral" /> : null}
+            {/* Following is how a listing gets found at all: it lives an hour
+                or two, so waiting to be discovered wastes most of it. */}
+            <Pressable
+              onPress={() => void toggle(store.id)}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: isFollowing(store.id) }}
+              accessibilityLabel={
+                isFollowing(store.id) ? t.store.unfollow : t.store.follow
+              }
+              hitSlop={10}
+              style={({ pressed }) => [styles.heart, { opacity: pressed ? 0.6 : 1 }]}
+            >
+              <MaterialCommunityIcons
+                name={isFollowing(store.id) ? 'heart' : 'heart-outline'}
+                size={26}
+                color={isFollowing(store.id) ? colors.brand : colors.inkFaint}
+              />
+            </Pressable>
           </View>
+          {isFollowing(store.id) ? (
+            <Text style={[type.small, { color: colors.brandInk }]}>
+              {t.store.followingNote}
+            </Text>
+          ) : null}
           <Text style={[type.body, { color: colors.inkMuted }]}>
             {f(t.store.away, {
               distance: formatDistance(store.distance_m),
@@ -288,6 +313,7 @@ const styles = StyleSheet.create({
   },
   block: { paddingHorizontal: space.lg, gap: space.xs },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  heart: { padding: space.xs },
   flex: { flex: 1 },
   mapCard: {
     marginHorizontal: space.lg,
