@@ -31,6 +31,9 @@ yarn-error.*
 *.pem
 
 # local env files
+# .env itself, not just .env.*.local: .env.example and src/lib/supabase.ts
+# both tell you to copy to exactly that name, and it holds project keys.
+.env
 .env*.local
 
 # typescript

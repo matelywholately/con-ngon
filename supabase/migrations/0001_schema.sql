@@ -4,9 +4,10 @@
 --   * `listings.safety_deadline` is GENERATED. Partner staff supply the time
 --     the food was cooked and how it is held; the deadline follows from that
 --     and cannot be typed, edited or extended by anyone.
---   * The interval table below mirrors HANDLING_RULES in src/lib/safety.ts
---     (maxDangerZoneMinutes - consumerBufferMinutes). The two must move
---     together; tests/safety.test.mts documents the intended values.
+--   * safety_window_minutes() below mirrors HANDLING_RULES in
+--     src/lib/safety.ts (maxDangerZoneMinutes - consumerBufferMinutes). The
+--     two must move together; tests/safety.test.mts documents the intended
+--     values.
 --   * Money is integer đồng. There are no fractional đồng in circulation and
 --     floats have no business in a payment path.
 
@@ -19,6 +20,54 @@ create type listing_status as enum ('draft', 'live', 'sold_out', 'expired', 'wit
 create type order_status as enum ('reserved', 'collected', 'no_show', 'cancelled', 'incident');
 create type payment_method as enum ('cash', 'vietqr', 'momo', 'zalopay', 'credit');
 create type restaurant_status as enum ('pending', 'approved', 'suspended');
+
+-- ------------------------------------------------------- the safety interval
+-- The usable window, in minutes, for each handling class. This is the one
+-- authoritative copy in the database: both the generated column and the
+-- write-time clamp below read it, so the two cannot drift apart.
+--
+-- Mirrors HANDLING_RULES in src/lib/safety.ts, as
+-- (maxDangerZoneMinutes - consumerBufferMinutes). The two must move together;
+-- tests/safety.test.mts documents the intended values.
+create or replace function safety_window_minutes(in_class handling_class)
+returns integer
+language sql immutable set search_path = public as $$
+  select case in_class
+    when 'hot'          then 180
+    when 'chilled'      then 1320
+    when 'ambient'      then 660
+    when 'shelf_stable' then 4320
+  end;
+$$;
+
+-- Why the addition lives in a function, and why it claims IMMUTABLE.
+--
+-- `safety_deadline` has to be a GENERATED column so the deadline follows from
+-- the food and cannot be typed, edited or extended by anyone. Postgres accepts
+-- only immutable expressions there, and `timestamptz + interval` is merely
+-- STABLE: an interval carrying months or days depends on the session TimeZone,
+-- because a calendar day across a DST boundary is not 24 hours. Writing the
+-- addition inline is therefore rejected outright --
+-- "generation expression is not immutable".
+--
+-- These intervals carry only minutes. Adding a fixed number of minutes to a
+-- timestamptz is plain microsecond arithmetic on the underlying UTC instant:
+-- no calendar, no timezone, the same answer everywhere. So this genuinely is
+-- immutable. The operator is marked STABLE for the general case; this wrapper
+-- narrows it to the case where that caution does not apply, and
+-- make_interval(mins => ...) is what holds the months and days at zero.
+--
+-- One consequence worth knowing: a STORED generated column is computed on
+-- write. Changing safety_window_minutes later will NOT recompute deadlines
+-- already on disk -- those rows need an explicit backfill.
+create or replace function safety_deadline_of(
+  in_prepared_at timestamptz,
+  in_class       handling_class
+)
+returns timestamptz
+language sql immutable set search_path = public as $$
+  select in_prepared_at + make_interval(mins => safety_window_minutes(in_class));
+$$;
 
 -- ---------------------------------------------------------------- profiles
 create table profiles (
@@ -78,12 +127,7 @@ create table listings (
   pickup_from        timestamptz not null,
   pickup_until       timestamptz not null,
   safety_deadline    timestamptz generated always as (
-    prepared_at + (case handling_class
-      when 'hot'          then interval '180 minutes'
-      when 'chilled'      then interval '1320 minutes'
-      when 'ambient'      then interval '660 minutes'
-      when 'shelf_stable' then interval '4320 minutes'
-    end)
+    safety_deadline_of(prepared_at, handling_class)
   ) stored,
   status             listing_status not null default 'draft',
   allergens          text[] not null default '{}',
@@ -101,9 +145,10 @@ create index listings_live_idx on listings (status, pickup_until)
 -- A partner's phone can be wrong, or optimistic. Clamp the pickup window to
 -- the computed safety deadline on the way in rather than trusting the client.
 -- safety_deadline is a generated column and is not visible to a BEFORE
--- trigger, so the same expression is repeated here. It is the one piece of
--- duplication in the schema, and it is deliberate: the generated column is
--- what clients read, this is what stops a bad write landing.
+-- trigger, so the deadline is recomputed here -- through the same
+-- safety_deadline_of() the column itself uses, so there is no second copy of
+-- the rule to drift. The generated column is what clients read; this is what
+-- stops a bad write landing.
 create or replace function clamp_pickup_window() returns trigger
 language plpgsql as $$
 declare
@@ -113,12 +158,7 @@ begin
     raise exception 'prepared_in_future';
   end if;
 
-  v_deadline := new.prepared_at + (case new.handling_class
-    when 'hot'          then interval '180 minutes'
-    when 'chilled'      then interval '1320 minutes'
-    when 'ambient'      then interval '660 minutes'
-    when 'shelf_stable' then interval '4320 minutes'
-  end);
+  v_deadline := safety_deadline_of(new.prepared_at, new.handling_class);
 
   if new.pickup_until > v_deadline then
     new.pickup_until := v_deadline;

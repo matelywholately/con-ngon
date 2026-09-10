@@ -55,8 +55,10 @@ floating tab bar.
   a build error. Never hardcode user-facing text in a component.
 - **`src/lib/safety.ts` is load-bearing.** It computes pickup deadlines from
   the 2h/4h food safety rule. Its intervals are mirrored in
-  `supabase/migrations/0001_schema.sql`; if you change one, change both and
-  update `tests/safety.test.mts`.
+  `safety_window_minutes()` in `supabase/migrations/0001_schema.sql`; if you
+  change one, change both and update `tests/safety.test.mts`.
+  `tests/schema.test.mts` reads the SQL and fails if the two ever disagree, so
+  this is now enforced rather than remembered.
 - **A count that changes the wording is a `Countable`.** Vietnamese has one
   form — "1 suất" and "6 suất" are the same word — so `vi.ts` writes a single
   string and marks the key `as Countable`; `en.ts` then answers with
@@ -87,7 +89,10 @@ floating tab bar.
   `strings.ts` (interpolation and plural selection, testable) versus
   `index.ts` (the locale store and the hook).
 - **RLS on every table, no exceptions.** The app holds the anon key, so
-  Row Level Security is the whole authorisation layer.
+  Row Level Security is the whole authorisation layer. `tests/schema.test.mts`
+  fails on a `create table` with no matching `enable row level security`.
+  When checking a policy against a live database, do it as the `anon` role:
+  `postgres` bypasses RLS, so everything passes and nothing is verified.
 - Money is integer đồng everywhere. Never a float.
 - **Native-only modules get a `.web.tsx` sibling, never a `Platform.OS`
   branch.** A native-only import throws when the browser *evaluates* it, before

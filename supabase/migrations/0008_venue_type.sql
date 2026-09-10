@@ -51,14 +51,14 @@ comment on column restaurants.venue_type is
 -- are the forecast-cooking venues the model depends on, and two cook to
 -- order and are there as the control.
 update restaurants set venue_type = 'street_stall'
-  where id = 'r1000000-0000-4000-8000-000000000001';  -- Bún chả, cooked to order
+  where id = 'a1000000-0000-4000-8000-000000000001';  -- Bún chả, cooked to order
 update restaurants set venue_type = 'com_binh_dan'
-  where id = 'r1000000-0000-4000-8000-000000000002';  -- Trays, the core case
+  where id = 'a1000000-0000-4000-8000-000000000002';  -- Trays, the core case
 update restaurants set venue_type = 'bakery'
-  where id = 'r1000000-0000-4000-8000-000000000003';  -- Bánh mì cart
+  where id = 'a1000000-0000-4000-8000-000000000003';  -- Bánh mì cart
 update restaurants set venue_type = 'canteen'
-  where id = 'r1000000-0000-4000-8000-000000000004';  -- Vegetarian canteen
+  where id = 'a1000000-0000-4000-8000-000000000004';  -- Vegetarian canteen
 update restaurants set venue_type = 'convenience'
-  where id = 'r1000000-0000-4000-8000-000000000005';  -- Chilled shelf
+  where id = 'a1000000-0000-4000-8000-000000000005';  -- Chilled shelf
 update restaurants set venue_type = 'com_binh_dan'
-  where id = 'r1000000-0000-4000-8000-000000000006';  -- Xôi, sells out by nature
+  where id = 'a1000000-0000-4000-8000-000000000006';  -- Xôi, sells out by nature

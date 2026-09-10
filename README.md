@@ -117,8 +117,43 @@ To connect a real backend:
 cp .env.example .env     # fill in your Supabase URL and anon key
 ```
 
-Then apply `supabase/migrations/*.sql` in order. `0004_seed_dev.sql` is
-development data only.
+`.env` is gitignored. Apply `supabase/migrations/*.sql` in strict numeric
+order — later ones alter what earlier ones create, and `0008` updates rows that
+`0004` inserts, so a gap leaves the database quietly wrong rather than failing.
+`0004_seed_dev.sql` is development data only; it is safe to re-run, and doing so
+refreshes the demo's countdowns instead of duplicating the rows.
+
+A few things about the schema that are easy to trip over, all of them learned
+by applying it to a real project rather than reading it:
+
+- **`safety_deadline` is generated, through `safety_deadline_of()`.** That
+  function is declared `immutable` and must stay so. Postgres accepts only
+  immutable expressions in a `GENERATED` column, and `timestamptz + interval` is
+  merely `stable`, so the addition cannot be written inline — the migration is
+  rejected outright at apply time. `tests/schema.test.mts` pins this.
+- **The interval table lives in `safety_window_minutes()`**, and mirrors
+  `HANDLING_RULES` in `src/lib/safety.ts`. The same test fails if the two drift.
+- **`is_staff_of()` must stay executable by `anon` and `authenticated`.**
+  Supabase's linter flags it as a `SECURITY DEFINER` function exposed over RPC,
+  but the RLS policies call it, and a policy expression needs `EXECUTE` as the
+  querying role. Revoking it does not harden the storefront, it closes it.
+- **RLS is the whole authorisation layer**, so verify it as the `anon` role
+  rather than as `postgres`, which bypasses it entirely. Every read path in the
+  app agreed that sold-out listings should be visible and every one of them was
+  wrong together until Postgres enforced the policy; see `0010`.
+
+Two of Supabase's security lints stay red on purpose, because neither is
+fixable from a migration:
+
+- **`spatial_ref_sys` has no RLS** (reported as an ERROR). It is PostGIS's own
+  table of coordinate-system definitions, owned by `supabase_admin`, so
+  `alter table ... enable row level security` fails with *must be owner*. It
+  holds the public EPSG registry and nothing of ours.
+- **`postgis` is installed in `public`.** The extension reports
+  `relocatable = false`, so `alter extension postgis set schema` is refused;
+  moving it means dropping and recreating the extension, and with it
+  `restaurants.location` and its GiST index. Not worth it for a lint, but it is
+  the reason the first one cannot be cleared either.
 
 ### The map needs a development build
 
