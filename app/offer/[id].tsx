@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Button } from '@/components/Button';
 import { Countdown } from '@/components/Countdown';
 import { EmptyState, Screen } from '@/components/Screen';
+import { PageHeader } from '@/components/PageHeader';
+import { PickupSteps } from '@/components/PickupSteps';
 import { useT } from '@/i18n';
 import { discountPercent, formatTime, formatVnd } from '@/lib/format';
 import { fetchListing } from '@/lib/queries';
@@ -76,9 +79,10 @@ export default function OfferDetail() {
       : t.offer.reserve;
 
   return (
-    <Screen edges={['top']} padded={false}>
+    <Screen padded={false}>
+      <PageHeader title={t.journey.mealTitle} backHref="/(eater)" orders />
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={[styles.hero, { backgroundColor: colors.surfaceAlt }]}>
+        <View style={[styles.hero, !listing.photo_url && styles.noPhoto, { backgroundColor: colors.surfaceAlt }]}>
           {listing.photo_url ? (
             <Image
               source={{ uri: listing.photo_url }}
@@ -86,11 +90,12 @@ export default function OfferDetail() {
               contentFit="cover"
             />
           ) : (
-            <Text style={[type.label, { color: colors.inkFaint }]}>ẢNH MÓN ĂN</Text>
+            <MaterialCommunityIcons name="bowl-mix-outline" size={56} color={colors.brand} />
           )}
         </View>
 
         <View style={styles.body}>
+          <PickupSteps current={0} />
           <Countdown deadline={window.effectiveDeadline} size="lg" />
 
           <Text style={[type.display, { color: colors.ink }]}>{listing.title}</Text>
@@ -159,6 +164,10 @@ export default function OfferDetail() {
                 : t.offer.noAllergens}
             </Text>
           </View>
+          <View style={[styles.block, { backgroundColor: colors.surface, borderColor: colors.line }]}>
+            <MaterialCommunityIcons name="qrcode" size={24} color={colors.brand} />
+            <Text style={[type.body, { color: colors.inkMuted }]}>{t.journey.qrAfterBooking}</Text>
+          </View>
         </View>
       </ScrollView>
 
@@ -178,6 +187,7 @@ export default function OfferDetail() {
 const styles = StyleSheet.create({
   centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   hero: { height: 220, alignItems: 'center', justifyContent: 'center' },
+  noPhoto: { height: 112 },
   body: { padding: space.lg, gap: space.md },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: space.md },
   price: { fontVariant: ['tabular-nums'] },

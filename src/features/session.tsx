@@ -28,9 +28,6 @@ type SessionState = {
   signInWithPhone: (phone: string) => Promise<{ ok: boolean; error?: string }>;
   verifyCode: (phone: string, code: string) => Promise<{ ok: boolean; error?: string }>;
   signOut: () => Promise<void>;
-  /** Lets a partner-staff account flip between the two experiences. */
-  setActiveRole: (role: 'eater' | 'partner_staff') => void;
-  activeRole: 'eater' | 'partner_staff';
   refreshProfile: () => Promise<void>;
 };
 
@@ -53,7 +50,6 @@ const DEMO_USER: SessionUser = {
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<SessionUser | null>(null);
-  const [activeRole, setActiveRole] = useState<'eater' | 'partner_staff'>('eater');
 
   const loadProfile = useCallback(async (userId: string, phone: string | null) => {
     const [{ data: profile }, { data: staff }] = await Promise.all([
@@ -143,11 +139,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       signInWithPhone,
       verifyCode,
       signOut,
-      activeRole,
-      setActiveRole,
       refreshProfile,
     }),
-    [loading, user, signInWithPhone, verifyCode, signOut, activeRole, refreshProfile],
+    [loading, user, signInWithPhone, verifyCode, signOut, refreshProfile],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

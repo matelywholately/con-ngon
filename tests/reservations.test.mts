@@ -101,3 +101,14 @@ test('cash and VietQR settle at pickup; credits appear only for an affordable pa
   assert.deepEqual(paymentOptions(20_000, 19_999), ['cash', 'vietqr']);
   assert.deepEqual(paymentOptions(0, 100_000), ['cash', 'vietqr']);
 });
+
+test('demo QR handover only collects the exact order encoded in the pass', () => {
+  const store = makeStore();
+  const result = store.reserve(args, now);
+  assert.ok(result.ok);
+  if (!result.ok) return;
+  assert.deepEqual(store.collect(listing.restaurant_id, result.pickupCode, now, 'another-order'),
+    { ok: false, reason: 'code_not_found' });
+  assert.equal(store.myOrders(now)[0]!.status, 'reserved');
+  assert.ok(store.collect(listing.restaurant_id, result.pickupCode, now, result.orderId).ok);
+});

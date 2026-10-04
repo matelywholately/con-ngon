@@ -8,6 +8,7 @@ import { Screen, ScreenTitle } from '@/components/Screen';
 import { useSession } from '@/features/session';
 import { useT } from '@/i18n';
 import { collectOrder } from '@/lib/queries';
+import { decodePickupQr } from '@/lib/pickupQr';
 import { radius, space, type, useTheme } from '@/theme';
 
 /**
@@ -32,12 +33,12 @@ export default function VerifyPickup() {
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
 
-  const verify = async (value: string) => {
+  const verify = async (value: string, orderId?: string) => {
     if (!user?.restaurantId || inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
     try {
-      const outcome = await collectOrder(user.restaurantId, value);
+      const outcome = await collectOrder(user.restaurantId, value, orderId);
 
       if (outcome.ok) {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -70,17 +71,29 @@ export default function VerifyPickup() {
     setScanning(true);
   };
 
+  const scan = (data: string) => {
+    if (inFlight.current) return;
+    const pass = decodePickupQr(data);
+    if (!pass || pass.restaurantId !== user?.restaurantId) {
+      setScanning(false);
+      setResult({ kind: 'error', message: pass ? t.partner.wrongRestaurantQr : t.partner.invalidQr });
+      return;
+    }
+    void verify(pass.code, pass.orderId);
+  };
+
   return (
     <Screen edges={['top']}>
-      <ScreenTitle title={t.partner.verifyTitle} subtitle={t.partner.enterCode} />
+      <ScreenTitle title={t.partner.verifyTitle} />
 
       {scanning ? (
         <View style={styles.scanner}>
           <CameraView
             style={StyleSheet.absoluteFill}
             barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-            onBarcodeScanned={({ data }) => void verify(data.slice(-4))}
+            onBarcodeScanned={({ data }) => scan(data)}
           />
+          <Text style={[type.small, styles.scanHint]}>{t.partner.scanHint}</Text>
         </View>
       ) : (
         <View style={styles.form}>
@@ -148,6 +161,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#000',
   },
+  scanHint: { color: '#ffffff', backgroundColor: '#000000', padding: space.md },
   result: { padding: space.lg, borderRadius: radius.lg },
   footer: { marginTop: 'auto', gap: space.sm, paddingVertical: space.lg },
 });

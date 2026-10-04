@@ -171,6 +171,7 @@ export const fixtureOrders: OrderWithListing[] = [
       prepared_at: fixtureListings[0]!.prepared_at,
       handling_class: 'hot',
       restaurant: {
+        id: fixtureListings[0]!.restaurant_id,
         name: fixtureListings[0]!.restaurant_name,
         address: fixtureListings[0]!.restaurant_address,
         lat: fixtureListings[0]!.restaurant_lat,

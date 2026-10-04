@@ -1,9 +1,10 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Button } from '@/components/Button';
 import { OfferCard } from '@/components/OfferCard';
-import { EmptyState, Screen, ScreenTitle } from '@/components/Screen';
+import { EmptyState, Screen } from '@/components/Screen';
+import { PageHeader } from '@/components/PageHeader';
 import { useLocation } from '@/features/useLocation';
 import { useT } from '@/i18n';
 import { fetchNearbyListings } from '@/lib/queries';
@@ -49,10 +50,10 @@ export default function Discover() {
 
   return (
     <Screen edges={['top']}>
-      <ScreenTitle
-        title={t.discover.title}
-        subtitle={f(t.discover.subtitle, { count: listings.length })}
-      />
+      <PageHeader title={t.discover.title} orders />
+      <Text style={[styles.subtitle, { color: colors.inkMuted }]}>
+        {f(t.discover.subtitle, { count: listings.length })}
+      </Text>
 
       {!location.granted ? (
         <View style={styles.permission}>
@@ -99,6 +100,7 @@ export default function Discover() {
 
 const styles = StyleSheet.create({
   centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  subtitle: { paddingVertical: space.md },
   permission: { paddingBottom: space.md },
   list: { gap: space.md, paddingBottom: space.xxl, flexGrow: 1 },
 });

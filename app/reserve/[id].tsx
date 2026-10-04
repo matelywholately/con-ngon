@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { randomUUID } from 'expo-crypto';
 import { Button } from '@/components/Button';
 import { Choice } from '@/components/Field';
 import { EmptyState, Screen, ScreenTitle } from '@/components/Screen';
+import { PageHeader } from '@/components/PageHeader';
+import { PickupSteps } from '@/components/PickupSteps';
 import { useSession } from '@/features/session';
 import { useT } from '@/i18n';
 import { formatVnd } from '@/lib/format';
@@ -116,7 +118,10 @@ export default function Reserve() {
   };
 
   return (
-    <Screen>
+    <Screen padded={false}>
+      <PageHeader title={t.journey.checkoutTitle} backHref={{ pathname: '/offer/[id]', params: { id: listing.id } }} orders />
+      <ScrollView contentContainerStyle={styles.content}>
+      <PickupSteps current={1} />
       <ScreenTitle title={t.reserve.title} subtitle={listing.title} />
 
       <View style={styles.form}>
@@ -169,6 +174,8 @@ export default function Reserve() {
           <Text style={[type.body, { color: colors.danger }]}>{error}</Text>
         ) : null}
       </View>
+      <Text style={[type.small, styles.qrHint, { color: colors.inkMuted }]}>{t.journey.qrAfterBooking}</Text>
+      </ScrollView>
 
       <View style={styles.footer}>
         <Button label={t.reserve.confirm} onPress={() => void submit()} loading={busy}
@@ -180,9 +187,11 @@ export default function Reserve() {
 
 const styles = StyleSheet.create({
   centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  content: { paddingHorizontal: space.lg, paddingBottom: space.lg },
+  qrHint: { paddingTop: space.lg },
   form: { gap: space.xl },
   total: { gap: space.xs, padding: space.lg, borderRadius: radius.lg, borderWidth: 1 },
   totalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   figure: { fontVariant: ['tabular-nums'] },
-  footer: { marginTop: 'auto', paddingVertical: space.lg },
+  footer: { padding: space.lg },
 });

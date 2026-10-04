@@ -192,14 +192,16 @@ export type CollectResult =
 export async function collectOrder(
   restaurantId: string,
   code: string,
+  orderId?: string,
 ): Promise<CollectResult> {
   if (!hasSupabase) {
-    return demo.collect(restaurantId, code);
+    return demo.collect(restaurantId, code, new Date(), orderId);
   }
 
-  const { data, error } = await supabase.rpc('collect_order', {
+  const { data, error } = await supabase.rpc(orderId ? 'collect_qr_order' : 'collect_order', {
     in_restaurant_id: restaurantId,
     in_code: code,
+    ...(orderId ? { in_order_id: orderId } : {}),
   }).single();
   if (error) {
     const reasons: CollectFailure[] = ['code_not_found', 'past_pickup_window',

@@ -31,7 +31,7 @@ export function createDemoMarketplace(seed: {
       pickup_from: listing.pickup_from, pickup_until: listing.pickup_until,
       safety_deadline: listing.safety_deadline, prepared_at: listing.prepared_at,
       handling_class: listing.handling_class,
-      restaurant: { name: listing.restaurant_name, address: listing.restaurant_address,
+      restaurant: { id: listing.restaurant_id, name: listing.restaurant_name, address: listing.restaurant_address,
         lat: listing.restaurant_lat, lng: listing.restaurant_lng, pickup_instructions: null },
     } };
   };
@@ -114,9 +114,10 @@ export function createDemoMarketplace(seed: {
       if (listing.status === 'sold_out') listing.status = 'live';
       return { ok: true };
     },
-    collect(restaurantId: string, code: string, now = new Date()):
+    collect(restaurantId: string, code: string, now = new Date(), orderId?: string):
       { ok: true; order: PartnerOrder } | { ok: false; reason: CollectFailure } {
       const matches = orders.filter((order) => order.pickup_code === code && order.status === 'reserved'
+        && (!orderId || order.id === orderId)
         && listingFor(order.listing_id)?.restaurant_id === restaurantId);
       if (matches.length > 1) return { ok: false, reason: 'ambiguous_code' };
       const order = matches[0];

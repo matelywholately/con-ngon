@@ -55,6 +55,9 @@ test('Postgres reservation lifecycle and access policies', async (t) => {
       .replaceAll('st_x(r.location::geometry)', '(r.location)[0]');
     await db.exec(lifecycle);
     await db.exec(await migration('0006_backfill_profiles.sql'));
+    await db.exec((await migration('0007_pickup_qr.sql'))
+      .replaceAll('st_y(r.location::geometry)', '(r.location)[1]')
+      .replaceAll('st_x(r.location::geometry)', '(r.location)[0]'));
 
     t.beforeEach(async () => {
       await db.exec('reset role; truncate auth.users, profiles, restaurants, restaurant_staff, listings, orders, credit_ledger, reports cascade');
@@ -89,6 +92,7 @@ test('Postgres reservation lifecycle and access policies', async (t) => {
       const passes = (await db.query<{ my_orders: { id: string; listing: { restaurant: { lat: number } } }[] }>('select my_orders()')).rows[0]!.my_orders;
       assert.equal(passes[0]!.id, order.id);
       assert.equal(passes[0]!.listing.restaurant.lat, 21.03);
+      assert.equal((passes[0]!.listing.restaurant as { id?: string }).id, restaurant);
     });
     await t.test('retries are idempotent and mismatched reuse is rejected', async () => {
       await login(eater);
@@ -193,6 +197,41 @@ test('Postgres reservation lifecycle and access policies', async (t) => {
       await login(other);
       await assert.rejects(reserve(firstListing, 'cash'), /sold_out/);
       assert.equal((await admin('select count(*)::int as n from orders')).rows[0]!.n, 1);
+    });
+    await t.test('QR handover verifies the exact restaurant/order/code pairing and staff membership', async () => {
+      await login(eater);
+      const order = (await reserve()).rows[0]!;
+      await assert.rejects(db.query('select collect_qr_order($1,$2,$3)', [restaurant, order.id, order.pickup_code]), /not_staff/);
+      await login(staff);
+      await assert.rejects(db.query('select collect_qr_order($1,$2,$3)', [restaurant, randomUUID(), order.pickup_code]), /code_not_found/);
+      await assert.rejects(db.query('select collect_qr_order($1,$2,$3)', [restaurant, order.id, 'bad']), /code_not_found/);
+      await assert.rejects(db.query('select collect_qr_order($1,$2,$3)', [randomUUID(), order.id, order.pickup_code]), /not_staff/);
+      await db.query('select collect_qr_order($1,$2,$3)', [restaurant, order.id, order.pickup_code]);
+      await assert.rejects(db.query('select collect_qr_order($1,$2,$3)', [restaurant, order.id, order.pickup_code]), /code_not_found/);
+    });
+    await t.test('a stale QR cannot collect a newer order that reuses the same four-digit code', async () => {
+      await login(eater);
+      const old = (await reserve(firstListing, 'cash')).rows[0]!;
+      await login(staff);
+      await db.query('select collect_qr_order($1,$2,$3)', [restaurant, old.id, old.pickup_code]);
+      await login(eater);
+      const next = (await reserve(secondListing, 'cash')).rows[0]!;
+      await admin('update orders set pickup_code=$1 where id=$2', [old.pickup_code, next.id]);
+      await login(staff);
+      await assert.rejects(db.query('select collect_qr_order($1,$2,$3)', [restaurant, old.id, old.pickup_code]), /code_not_found/);
+      await db.query('select collect_qr_order($1,$2,$3)', [restaurant, next.id, old.pickup_code]);
+    });
+    await t.test('QR handover obeys opening time and safety expiry before scheduled sweeping', async () => {
+      await admin("update listings set pickup_from=now()+interval '1 hour' where id=$1", [firstListing]);
+      await login(eater);
+      const future = (await reserve(firstListing, 'cash')).rows[0]!;
+      await login(staff);
+      await assert.rejects(db.query('select collect_qr_order($1,$2,$3)', [restaurant, future.id, future.pickup_code]), /pickup_not_started/);
+      await admin("update listings set prepared_at=now()-interval '4 hours', pickup_from=now()-interval '3 hours', pickup_until=now()-interval '1 hour' where id=$1", [secondListing]);
+      const expired = (await admin(`insert into orders(listing_id,eater_id,portions,price_paid_vnd,payment_method,pickup_code)
+        values($1,$2,1,20000,'cash','7777') returning id`, [secondListing, eater])).rows[0]!;
+      await login(staff);
+      await assert.rejects(db.query('select collect_qr_order($1,$2,$3)', [restaurant, expired.id, '7777']), /past_pickup_window/);
     });
   } finally { await db.close(); }
 });
