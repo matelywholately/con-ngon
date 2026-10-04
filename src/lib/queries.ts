@@ -6,9 +6,12 @@ import { hasSupabase, supabase } from './supabase';
 import {
   fixtureListings,
   fixtureOrders,
-  fixturePartnerListings,
   fixturePartnerOrders,
+  DEMO_USER_ID,
 } from './fixtures';
+import { createDemoMarketplace } from './demoMarketplace';
+import { reserveFailure } from './reservations';
+import type { ReserveResult, CancelResult, CollectFailure } from './reservations';
 import type {
   NearbyListing,
   OrderWithListing,
@@ -19,14 +22,22 @@ import type { HandlingClass } from './safety';
 
 export type Coords = { lat: number; lng: number };
 
+const demo = createDemoMarketplace({
+  listings: fixtureListings,
+  orders: [...fixtureOrders, ...fixturePartnerOrders.filter(
+    (order) => !fixtureOrders.some((existing) => existing.id === order.id),
+  )],
+  userId: DEMO_USER_ID,
+  creditVnd: 100_000,
+});
+export const getDemoCreditBalance = () => demo.creditBalance();
+
 export async function fetchNearbyListings(
   origin: Coords,
   radiusM = 1500,
 ): Promise<NearbyListing[]> {
   if (!hasSupabase) {
-    return fixtureListings
-      .filter((l) => l.distance_m <= radiusM)
-      .sort((a, b) => deadlineOf(a) - deadlineOf(b));
+    return demo.nearby(radiusM);
   }
 
   const { data, error } = await supabase.rpc('nearby_listings', {
@@ -40,48 +51,32 @@ export async function fetchNearbyListings(
 }
 
 export async function fetchListing(id: string): Promise<NearbyListing | null> {
-  if (!hasSupabase) return fixtureListings.find((l) => l.id === id) ?? null;
+  if (!hasSupabase) return demo.listing(id);
 
-  const { data, error } = await supabase
-    .from('listings')
-    .select('*, restaurant:restaurants(name, address, location)')
-    .eq('id', id)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc('listing_details', { in_listing_id: id });
   if (error) throw new Error(error.message);
   return (data as NearbyListing | null) ?? null;
 }
-
-export type ReserveResult =
-  | { ok: true; orderId: string; pickupCode: string }
-  | { ok: false; reason: 'sold_out' | 'past_pickup_window' | 'unknown' };
 
 export async function reserveListing(args: {
   listingId: string;
   portions: number;
   paymentMethod: PaymentMethod;
+  requestId: string;
 }): Promise<ReserveResult> {
   if (!hasSupabase) {
-    const listing = fixtureListings.find((l) => l.id === args.listingId);
-    if (!listing || listing.portions_left < args.portions) {
-      return { ok: false, reason: 'sold_out' };
-    }
-    listing.portions_left -= args.portions;
-    return { ok: true, orderId: 'demo-order', pickupCode: '0421' };
+    return demo.reserve(args);
   }
 
   const { data, error } = await supabase.rpc('reserve_listing', {
     in_listing_id: args.listingId,
     in_portions: args.portions,
     in_payment_method: args.paymentMethod,
-  });
+    in_request_id: args.requestId,
+  }).single();
 
   if (error) {
-    const message = error.message ?? '';
-    if (message.includes('sold_out')) return { ok: false, reason: 'sold_out' };
-    if (message.includes('past_pickup_window')) {
-      return { ok: false, reason: 'past_pickup_window' };
-    }
-    return { ok: false, reason: 'unknown' };
+    return { ok: false, reason: reserveFailure(error.message ?? '') };
   }
 
   const order = data as { id: string; pickup_code: string };
@@ -89,16 +84,20 @@ export async function reserveListing(args: {
 }
 
 export async function fetchMyOrders(): Promise<OrderWithListing[]> {
-  if (!hasSupabase) return fixtureOrders;
+  if (!hasSupabase) return demo.myOrders();
 
-  const { data, error } = await supabase
-    .from('orders')
-    .select(
-      '*, listing:listings(title, photo_url, pickup_from, pickup_until, safety_deadline, prepared_at, handling_class, restaurant:restaurants(name, address, pickup_instructions))',
-    )
-    .order('reserved_at', { ascending: false });
+  const { data, error } = await supabase.rpc('my_orders');
   if (error) throw new Error(error.message);
   return (data ?? []) as unknown as OrderWithListing[];
+}
+
+export async function cancelOrder(orderId: string): Promise<CancelResult> {
+  if (!hasSupabase) return demo.cancel(orderId);
+  const { error } = await supabase.rpc('cancel_order', { in_order_id: orderId });
+  if (!error) return { ok: true };
+  return { ok: false, reason: error.message.includes('past_pickup_window')
+    ? 'past_pickup_window' : error.message.includes('order_not_reserved')
+      ? 'order_not_reserved' : 'unknown' };
 }
 
 // ------------------------------------------------------------------ partner
@@ -106,7 +105,7 @@ export async function fetchMyOrders(): Promise<OrderWithListing[]> {
 export async function fetchPartnerListings(
   restaurantId: string,
 ): Promise<NearbyListing[]> {
-  if (!hasSupabase) return fixturePartnerListings;
+  if (!hasSupabase) return demo.partnerListings(restaurantId);
 
   const { data, error } = await supabase
     .from('listings')
@@ -121,7 +120,7 @@ export async function fetchPartnerListings(
 export async function fetchPartnerOrders(
   restaurantId: string,
 ): Promise<PartnerOrder[]> {
-  if (!hasSupabase) return fixturePartnerOrders;
+  if (!hasSupabase) return demo.partnerOrders(restaurantId);
 
   const { data, error } = await supabase
     .from('orders')
@@ -188,37 +187,24 @@ export async function publishListing(input: PublishInput): Promise<{ id: string 
 
 export type CollectResult =
   | { ok: true; order: PartnerOrder }
-  | { ok: false; reason: 'code_not_found' | 'unknown' };
+  | { ok: false; reason: CollectFailure };
 
 export async function collectOrder(
   restaurantId: string,
   code: string,
 ): Promise<CollectResult> {
   if (!hasSupabase) {
-    const match = fixturePartnerOrders.find(
-      (o) => o.pickup_code === code.padStart(4, '0') && o.status === 'reserved',
-    );
-    if (!match) return { ok: false, reason: 'code_not_found' };
-    match.status = 'collected';
-    return { ok: true, order: match };
+    return demo.collect(restaurantId, code);
   }
 
   const { data, error } = await supabase.rpc('collect_order', {
     in_restaurant_id: restaurantId,
     in_code: code,
-  });
+  }).single();
   if (error) {
-    return {
-      ok: false,
-      reason: error.message?.includes('code_not_found') ? 'code_not_found' : 'unknown',
-    };
+    const reasons: CollectFailure[] = ['code_not_found', 'past_pickup_window',
+      'pickup_not_started', 'restaurant_unavailable', 'ambiguous_code'];
+    return { ok: false, reason: reasons.find((reason) => error.message.includes(reason)) ?? 'unknown' };
   }
   return { ok: true, order: data as PartnerOrder };
-}
-
-function deadlineOf(listing: NearbyListing): number {
-  return Math.min(
-    new Date(listing.pickup_until).getTime(),
-    new Date(listing.safety_deadline).getTime(),
-  );
 }

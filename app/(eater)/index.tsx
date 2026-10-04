@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Button } from '@/components/Button';
 import { OfferCard } from '@/components/OfferCard';
 import { EmptyState, Screen, ScreenTitle } from '@/components/Screen';
@@ -33,9 +33,9 @@ export default function Discover() {
     }
   }, [location.coords, t.common.errorBody]);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     if (!location.loading) void load();
-  }, [location.loading, load]);
+  }, [location.loading, load]));
 
   if (loading || location.loading) {
     return (

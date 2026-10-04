@@ -1,20 +1,26 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useCallback } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Button } from '@/components/Button';
 import { Screen, ScreenTitle } from '@/components/Screen';
 import { useSession } from '@/features/session';
 import { setLocale, useT, type Locale } from '@/i18n';
 import { radius, space, type, useTheme } from '@/theme';
+import { formatVnd } from '@/lib/format';
 
 export default function Profile() {
   const { colors } = useTheme();
-  const { t, locale } = useT();
+  const { t, f, locale } = useT();
   const router = useRouter();
-  const { user, signOut, setActiveRole } = useSession();
+  const { user, signOut, setActiveRole, refreshProfile } = useSession();
+  useFocusEffect(useCallback(() => { void refreshProfile(); }, [refreshProfile]));
 
   return (
     <Screen edges={['top']}>
       <ScreenTitle title={t.profile.title} subtitle={user?.phone ?? undefined} />
+      <Text style={[type.bodyStrong, { color: colors.brandInk }]}>
+        {f(t.profile.creditBalance, { amount: formatVnd(user?.creditBalanceVnd ?? 0) })}
+      </Text>
 
       <View style={styles.section}>
         <Text style={[type.label, { color: colors.inkFaint }]}>

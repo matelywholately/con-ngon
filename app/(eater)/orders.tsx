@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Countdown } from '@/components/Countdown';
 import { EmptyState, Screen, ScreenTitle } from '@/components/Screen';
 import { useT } from '@/i18n';
 import { formatVnd } from '@/lib/format';
 import { fetchMyOrders } from '@/lib/queries';
+import { displayedOrderStatus } from '@/lib/reservations';
 import type { OrderWithListing } from '@/lib/types';
 import { radius, space, type, useTheme } from '@/theme';
 
@@ -15,12 +16,17 @@ export default function Orders() {
   const router = useRouter();
   const [orders, setOrders] = useState<OrderWithListing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(() => new Date());
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     fetchMyOrders()
       .then(setOrders)
       .catch(() => setOrders([]))
       .finally(() => setLoading(false));
+  }, []));
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
   }, []);
 
   const statusLabel = (status: OrderWithListing['status']) =>
@@ -30,7 +36,7 @@ export default function Orders() {
         ? t.orders.statusNoShow
         : status === 'cancelled'
           ? t.orders.statusCancelled
-          : t.orders.statusReserved;
+          : status === 'incident' ? t.orders.statusIncident : t.orders.statusReserved;
 
   if (loading) {
     return (
@@ -52,6 +58,7 @@ export default function Orders() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={<EmptyState title={t.orders.title} body={t.orders.empty} />}
         renderItem={({ item }) => {
+          const status = displayedOrderStatus(item, now);
           const deadline = new Date(
             Math.min(
               new Date(item.listing.pickup_until).getTime(),
@@ -67,11 +74,11 @@ export default function Orders() {
               style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.line }]}
             >
               <View style={styles.rowTop}>
-                {item.status === 'reserved' ? (
+                {status === 'reserved' ? (
                   <Countdown deadline={deadline} />
                 ) : (
                   <Text style={[type.small, { color: colors.inkFaint }]}>
-                    {statusLabel(item.status)}
+                    {statusLabel(status)}
                   </Text>
                 )}
                 <Text style={[type.bodyStrong, styles.amount, { color: colors.ink }]}>

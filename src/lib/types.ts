@@ -74,6 +74,8 @@ export type Order = {
   status: OrderStatus;
   reserved_at: string;
   collected_at: string | null;
+  credit_used_vnd: number;
+  reservation_request_id: string | null;
 };
 
 export type OrderWithListing = Order & {

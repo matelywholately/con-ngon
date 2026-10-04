@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { hasSupabase, supabase } from '@/lib/supabase';
 import { DEMO_RESTAURANT_ID } from '@/lib/fixtures';
+import { getDemoCreditBalance } from '@/lib/queries';
 import type { UserRole } from '@/lib/types';
 
 export type SessionUser = {
@@ -30,6 +31,7 @@ type SessionState = {
   /** Lets a partner-staff account flip between the two experiences. */
   setActiveRole: (role: 'eater' | 'partner_staff') => void;
   activeRole: 'eater' | 'partner_staff';
+  refreshProfile: () => Promise<void>;
 };
 
 const SessionContext = createContext<SessionState | null>(null);
@@ -45,7 +47,7 @@ const DEMO_USER: SessionUser = {
   name: 'Minh',
   role: 'partner_staff',
   restaurantId: DEMO_RESTAURANT_ID,
-  creditBalanceVnd: 0,
+  creditBalanceVnd: 100_000,
 };
 
 export function SessionProvider({ children }: { children: ReactNode }) {
@@ -79,7 +81,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!hasSupabase) {
-      setUser(DEMO_USER);
+      setUser({ ...DEMO_USER, creditBalanceVnd: getDemoCreditBalance() });
       setLoading(false);
       return;
     }
@@ -113,7 +115,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const verifyCode = useCallback(async (phone: string, code: string) => {
     if (!hasSupabase) {
-      setUser(DEMO_USER);
+      setUser({ ...DEMO_USER, creditBalanceVnd: getDemoCreditBalance() });
       return { ok: true };
     }
     const { error } = await supabase.auth.verifyOtp({ phone, token: code, type: 'sms' });
@@ -125,6 +127,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const refreshProfile = useCallback(async () => {
+    if (!hasSupabase) {
+      setUser((current) => current ? { ...current, creditBalanceVnd: getDemoCreditBalance() } : null);
+      return;
+    }
+    const { data } = await supabase.auth.getSession();
+    if (data.session) await loadProfile(data.session.user.id, data.session.user.phone ?? null);
+  }, [loadProfile]);
+
   const value = useMemo<SessionState>(
     () => ({
       loading,
@@ -134,8 +145,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       signOut,
       activeRole,
       setActiveRole,
+      refreshProfile,
     }),
-    [loading, user, signInWithPhone, verifyCode, signOut, activeRole],
+    [loading, user, signInWithPhone, verifyCode, signOut, activeRole, refreshProfile],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

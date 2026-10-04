@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
@@ -30,21 +30,34 @@ export default function VerifyPickup() {
     { kind: 'ok'; name: string } | { kind: 'error'; message: string } | null
   >(null);
   const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false);
 
   const verify = async (value: string) => {
-    if (!user?.restaurantId || busy) return;
+    if (!user?.restaurantId || inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
-    const outcome = await collectOrder(user.restaurantId, value);
-    setBusy(false);
-    setScanning(false);
+    try {
+      const outcome = await collectOrder(user.restaurantId, value);
 
-    if (outcome.ok) {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setResult({ kind: 'ok', name: outcome.order.eater_name ?? '—' });
-      setCode('');
-    } else {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setResult({ kind: 'error', message: t.partner.wrongCode });
+      if (outcome.ok) {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setResult({ kind: 'ok', name: outcome.order.eater_name ?? '' });
+        setCode('');
+      } else {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        setResult({ kind: 'error', message:
+          outcome.reason === 'past_pickup_window' ? t.partner.pickupExpired
+          : outcome.reason === 'pickup_not_started' ? t.partner.pickupNotStarted
+          : outcome.reason === 'restaurant_unavailable' ? t.partner.pickupUnavailable
+          : outcome.reason === 'ambiguous_code' ? t.partner.ambiguousCode
+          : outcome.reason === 'code_not_found' ? t.partner.wrongCode : t.common.errorBody });
+      }
+    } catch {
+      setResult({ kind: 'error', message: t.common.errorBody });
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+      setScanning(false);
     }
   };
 
@@ -100,7 +113,7 @@ export default function VerifyPickup() {
                 ]}
               >
                 {result.kind === 'ok'
-                  ? f(t.partner.verified, { name: result.name })
+                  ? result.name ? f(t.partner.verified, { name: result.name }) : t.partner.verifiedGeneric
                   : result.message}
               </Text>
             </View>

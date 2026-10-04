@@ -15,6 +15,7 @@ const minutesFromNow = (n: number) => new Date(Date.now() + n * 60_000).toISOStr
 const minutesAgo = (n: number) => new Date(Date.now() - n * 60_000).toISOString();
 
 export const DEMO_RESTAURANT_ID = 'r1000000-0000-4000-8000-000000000001';
+export const DEMO_USER_ID = 'u1000000-0000-4000-8000-000000000001';
 
 /** Roughly the middle of Cầu Giấy, used as the fallback map centre. */
 export const HANOI_FALLBACK = { lat: 21.0313, lng: 105.7902 };
@@ -159,6 +160,8 @@ export const fixtureOrders: OrderWithListing[] = [
     status: 'reserved',
     reserved_at: minutesAgo(8),
     collected_at: null,
+    credit_used_vnd: 0,
+    reservation_request_id: null,
     listing: {
       title: fixtureListings[0]!.title,
       photo_url: null,
@@ -190,6 +193,8 @@ export const fixturePartnerOrders: PartnerOrder[] = [
     status: 'reserved',
     reserved_at: minutesAgo(8),
     collected_at: null,
+    credit_used_vnd: 0,
+    reservation_request_id: null,
     listing_title: fixtureListings[0]!.title,
     eater_name: 'Minh',
   },
@@ -204,6 +209,8 @@ export const fixturePartnerOrders: PartnerOrder[] = [
     status: 'reserved',
     reserved_at: minutesAgo(3),
     collected_at: null,
+    credit_used_vnd: 0,
+    reservation_request_id: null,
     listing_title: fixtureListings[0]!.title,
     eater_name: 'Hương',
   },

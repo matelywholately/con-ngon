@@ -126,6 +126,12 @@ tests/                   node --test over the pure modules
 
 ## Status
 
+The reservation lifecycle now includes atomic support-credit spending,
+cancellation with stock/credit restoration, retry IDs, and pickup-window
+checks. Both demo roles share the same order state. See
+[the feature assessment](docs/FEATURE_STATUS.md) for remaining work,
+migration instructions and validation limits.
+
 Phase 1–2 of the plan: scaffold and core loop. A partner can list surplus in
 about 30 seconds and verify a handover; an eater can discover, reserve and
 collect. Not yet built: payments beyond cash/VietQR selection, the NGO

@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Platform, StyleSheet, Text, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Button } from '@/components/Button';
 import { Countdown } from '@/components/Countdown';
 import { EmptyState, Screen } from '@/components/Screen';
 import { useT } from '@/i18n';
 import { formatPickupCode } from '@/lib/format';
-import { fetchMyOrders } from '@/lib/queries';
+import { cancelOrder, fetchMyOrders } from '@/lib/queries';
+import { displayedOrderStatus, pickupDeadline } from '@/lib/reservations';
+import { useSession } from '@/features/session';
 import type { OrderWithListing } from '@/lib/types';
 import { radius, space, type, useTheme } from '@/theme';
 
@@ -19,16 +21,26 @@ export default function PickupPass() {
   const { t } = useT();
   const router = useRouter();
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
+  const { refreshProfile } = useSession();
 
   const [order, setOrder] = useState<OrderWithListing | null>(null);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [now, setNow] = useState(() => new Date());
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
     fetchMyOrders()
-      .then((orders) => setOrder(orders.find((o) => o.id === orderId) ?? orders[0] ?? null))
+      .then((orders) => setOrder(orders.find((o) => o.id === orderId) ?? null))
       .catch(() => setOrder(null))
       .finally(() => setLoading(false));
   }, [orderId]);
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   if (loading) {
     return (
@@ -47,12 +59,27 @@ export default function PickupPass() {
     );
   }
 
-  const deadline = new Date(
-    Math.min(
-      new Date(order.listing.pickup_until).getTime(),
-      new Date(order.listing.safety_deadline).getTime(),
-    ),
-  );
+  const deadline = pickupDeadline(order.listing);
+  const status = displayedOrderStatus(order, now);
+  const active = status === 'reserved';
+  const statusLabel = status === 'collected' ? t.pass.collected
+    : status === 'cancelled' ? t.pass.cancelled
+    : status === 'incident' ? t.orders.statusIncident : t.pass.expired;
+  const cancel = async () => {
+    if (busy || !active) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await cancelOrder(order.id);
+      if (!result.ok) {
+        setError(result.reason === 'unknown' ? t.pass.cancelFailed : t.pass.cancelTooLate);
+        return;
+      }
+      setOrder({ ...order, status: 'cancelled' });
+      await refreshProfile();
+    } catch { setError(t.pass.cancelFailed); }
+    finally { setBusy(false); }
+  };
 
   const openDirections = () => {
     const { lat, lng } = order.listing.restaurant;
@@ -69,16 +96,16 @@ export default function PickupPass() {
     <Screen>
       <View style={styles.top}>
         <Text style={[type.label, { color: colors.inkFaint }]}>
-          {t.pass.showThis.toUpperCase()}
+          {(active ? t.pass.showThis : statusLabel).toUpperCase()}
         </Text>
 
-        <View style={[styles.codeCard, { backgroundColor: colors.brand }]}>
+        {active ? <View style={[styles.codeCard, { backgroundColor: colors.brand }]}>
           <Text style={[styles.code, { color: colors.onBrand }]} accessibilityRole="text">
             {formatPickupCode(order.pickup_code)}
           </Text>
-        </View>
+        </View> : null}
 
-        <Countdown deadline={deadline} size="lg" />
+        {active ? <Countdown deadline={deadline} size="lg" /> : null}
 
         <View style={[styles.block, { backgroundColor: colors.surface, borderColor: colors.line }]}>
           <Text style={[type.heading, { color: colors.ink }]}>{order.listing.title}</Text>
@@ -97,6 +124,12 @@ export default function PickupPass() {
       </View>
 
       <View style={styles.footer}>
+        {error ? <Text style={[type.small, { color: colors.danger }]}>{error}</Text> : null}
+        {active ? <>
+          <Text style={[type.small, { color: colors.inkMuted }]}>{t.pass.cancelCreditHint}</Text>
+          <Button label={t.pass.cancelOrder} variant="secondary" onPress={() => void cancel()} loading={busy} />
+          <Button label={t.pass.refresh} variant="ghost" onPress={load} disabled={busy} />
+        </> : null}
         <Button label={t.pass.directions} onPress={openDirections} />
         <Button
           label={t.common.done}

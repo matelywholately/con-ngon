@@ -61,11 +61,13 @@ export function Choice<T extends string>({
   options,
   value,
   onChange,
+  disabled = false,
 }: {
   label: string;
   options: readonly { value: T; label: string; hint?: string }[];
   value: T;
   onChange: (next: T) => void;
+  disabled?: boolean;
 }) {
   const { colors } = useTheme();
   return (
@@ -79,9 +81,9 @@ export function Choice<T extends string>({
           return (
             <Text
               key={option.value}
-              onPress={() => onChange(option.value)}
+              onPress={disabled ? undefined : () => onChange(option.value)}
               accessibilityRole="radio"
-              accessibilityState={{ selected }}
+              accessibilityState={{ selected, disabled }}
               style={[
                 type.bodyStrong,
                 styles.choice,
