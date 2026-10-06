@@ -79,6 +79,11 @@ on reload. It cannot test genuine Zalo login or device storage.
 
 ## Publish
 
+For the connected project, `zalo-auth` version 1 is deployed. Its live CORS and
+origin checks passed; login remains disabled until the parent Zalo credentials
+and required database migrations are configured. The migrations still await
+the specific live-backend approval requested from the owner.
+
 1. Sign in to [Zalo Developers](https://developers.zalo.me/) using your own Zalo
    account, create the parent developer app, and create a Mini App under it.
    Account agreements and owner verification must be completed by the owner.

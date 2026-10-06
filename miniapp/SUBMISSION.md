@@ -61,7 +61,13 @@ the following tested changes was requested:
 | `0008_zalo_auth.sql` | Service-only per-token login budget, no raw tokens stored |
 | `0009_postgis_permissions.sql` | Restrict public writes to PostGIS reference data |
 
-After approval, deploy these changes and the `zalo-auth` Edge Function, verify
-the live schema/access rules, then configure the parent Zalo app secrets in
-Supabase. The public API key is already configured locally. Secrets must not
-be sent in chat or placed in the Mini App bundle.
+The `zalo-auth` Edge Function is deployed as version 1 and is ACTIVE. Live
+checks confirmed a 204 Zalo CORS preflight, a 403 response to an untrusted
+origin, and a 503 `not_configured` response without the parent Zalo app
+credentials. No login session was issued. The database migrations above remain
+unapplied pending approval.
+
+After approval, deploy those migrations and verify the live schema/access
+rules, then configure the parent Zalo app secrets in Supabase. The public API
+key is already configured locally. Secrets must not be sent in chat or placed
+in the Mini App bundle.
