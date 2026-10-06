@@ -1,5 +1,9 @@
 # Bữa Kịp — Zalo Mini App
 
+Production target branch: `codex/zalo-mini-app`. The native Google Play app
+has its own `codex/google-play` branch. See [PLATFORMS.md](../PLATFORMS.md)
+for the split and [DESIGN.md](DESIGN.md) for the original Bistro-inspired UI.
+
 A small React/Vite customer client sharing the marketplace's safety rules,
 reservation logic and pickup QR format. Restaurant staff keep the existing
 Expo workspace. This build does not include Expo, maps, camera scanning,
@@ -38,7 +42,9 @@ generated HTML and older WebViews.
 Release checks reject demos, missing backend configuration, missing Mini App
 IDs and altered build files. They verify the local package, not live login or
 Zalo approval. The production build removes the demo fixtures. Photos load
-over HTTPS; images, fonts and camera libraries are not embedded in the package.
+over HTTPS; fonts and camera libraries are not embedded in the package.
+Labelled original meal illustrations are included only in the demo build and
+removed entirely from production.
 
 ## Backend and identity
 
