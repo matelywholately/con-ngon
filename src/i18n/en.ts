@@ -2,6 +2,22 @@ import type { Dictionary } from './vi';
 
 /** Typed against the Vietnamese source: a missing key fails the build. */
 export const en: Dictionary = {
+  zalo: {
+    name: 'Bữa Kịp', tagline: 'A good meal. Just in time.', meals: 'Meals', account: 'Account',
+    area: 'Pickup area', pilot: 'Meals in your selected area in Hanoi.',
+    demo: 'Preview · orders and support credits are sample data.',
+    welcome: 'Reserve inside Zalo', welcomeBody: 'Sign in with Zalo to see orders, get your pickup QR and use support credits.',
+    signIn: 'Continue with Zalo', loginFailed: 'Could not sign in. Open in Zalo and try again.',
+    unavailable: 'Bữa Kịp is preparing to open. Please come back later.',
+    privacy: 'Privacy', privacyBody: 'Bữa Kịp uses your Zalo identifier to create an account and store reservations. We do not request contacts or a phone number. Restaurants see orders they need to hand over. You choose the search area. Login sessions stay in memory; pending reservation requests are stored on your device to prevent duplicates.',
+    creditsBody: 'Credits are granted by a support programme and can be used for meals. New accounts start with 0 credits. Cancel before the pickup deadline for a refund.',
+    help: 'Order support', helpBody: 'For a problem with food or pickup time, contact the restaurant at the address on your pickup pass. Keep your order reference. Bữa Kịp contact details will be published before opening.',
+    pending: 'Reservation awaiting confirmation', pendingBody: 'Check your previous request to prevent duplicates. Portions and payment choices are locked.',
+    checkPending: 'Check pending reservation', cancelledConfirm: 'Cancel this order? Portions and support credits will be returned if it is still within the pickup deadline.',
+    confirmCancel: 'Confirm cancellation', keepOrder: 'Keep order',
+    noPhoto: 'A meal from a local restaurant', refresh: 'Refresh', details: 'View meal', safetyBody: 'Only cooked food that has never been served to a customer is accepted. Pickup deadlines account for cooking, storage and the trip home. Arrive within the time shown on your pass.',
+    freeCredit: 'Support credits', prepared: 'Prepared at', pickup: 'Pickup time',
+  },
   journey: {
     meal: 'Choose meal', reserve: 'Reserve', pickup: 'Pickup QR',
     mealTitle: 'Meal details', checkoutTitle: 'Confirm order',
@@ -114,6 +130,7 @@ export const en: Dictionary = {
     unavailable: 'The restaurant cannot accept this order right now.',
     signInRequired: 'Sign in to reserve a meal.',
     retryPending: 'The result is unconfirmed. Confirm again to check the same reservation without creating a duplicate.',
+    priorityWindow: 'This free meal currently gives priority to people with support credits. Try again after the priority window.',
     payAtPickup: 'Pay at the counter when collecting. The app does not take online payments yet.',
     creditTerms: 'Support credit is deducted on reservation and refunded if you cancel before pickup closes.',
   },

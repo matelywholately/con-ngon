@@ -4,6 +4,22 @@
  * silently drift out of sync — a missing key is a build error.
  */
 export const vi = {
+  zalo: {
+    name: 'Bữa Kịp', tagline: 'Một bữa ngon. Vừa kịp lúc.', meals: 'Tìm món', account: 'Tài khoản',
+    area: 'Khu vực lấy đồ', pilot: 'Các suất trong khu vực bạn chọn ở Hà Nội.',
+    demo: 'Bản xem thử · đơn và điểm hỗ trợ là dữ liệu mẫu.',
+    welcome: 'Đặt giữ ngay trong Zalo', welcomeBody: 'Đăng nhập bằng Zalo để xem đơn, nhận mã QR và dùng điểm hỗ trợ.',
+    signIn: 'Tiếp tục bằng Zalo', loginFailed: 'Chưa đăng nhập được. Mở trong Zalo và thử lại nhé.',
+    unavailable: 'Bữa Kịp đang chuẩn bị mở cửa. Vui lòng quay lại sau.',
+    privacy: 'Quyền riêng tư', privacyBody: 'Bữa Kịp dùng mã định danh Zalo để tạo tài khoản và lưu đơn đặt. Không yêu cầu danh bạ hay số điện thoại. Nhà hàng chỉ xem đơn cần giao. Vị trí tìm món là khu vực bạn tự chọn. Phiên đăng nhập nằm trong bộ nhớ; yêu cầu đặt đang chờ được lưu trên thiết bị để tránh đặt trùng.',
+    creditsBody: 'Điểm do chương trình hỗ trợ cấp, dùng để đặt suất ăn. Tài khoản mới bắt đầu với 0 điểm. Huỷ trước hạn lấy để được hoàn điểm.',
+    help: 'Hỗ trợ đơn hàng', helpBody: 'Nếu có vấn đề với món hoặc giờ nhận, liên hệ trực tiếp nhà hàng tại địa chỉ trên phiếu lấy đồ. Giữ mã đơn để đối chiếu. Thông tin liên hệ của Bữa Kịp sẽ được công bố trước khi mở bán.',
+    pending: 'Đơn đang chờ xác nhận', pendingBody: 'Kiểm tra lại yêu cầu trước đó để tránh đặt trùng. Số suất và cách thanh toán đã được giữ nguyên.',
+    checkPending: 'Kiểm tra đơn đang chờ', cancelledConfirm: 'Huỷ đơn này? Suất sẽ được trả lại và điểm hỗ trợ được hoàn nếu còn hạn.',
+    confirmCancel: 'Xác nhận huỷ', keepOrder: 'Giữ đơn',
+    noPhoto: 'Suất ăn từ nhà hàng', refresh: 'Tải lại', details: 'Xem món', safetyBody: 'Chỉ nhận suất đã nấu và chưa dọn ra cho khách. Hạn lấy dựa trên giờ nấu, cách bảo quản và thời gian mang về. Đến đúng khung giờ ghi trên phiếu.',
+    freeCredit: 'Điểm hỗ trợ', prepared: 'Nấu lúc', pickup: 'Giờ lấy',
+  },
   journey: {
     meal: 'Chọn món', reserve: 'Đặt giữ', pickup: 'Lấy bằng QR',
     mealTitle: 'Chi tiết món', checkoutTitle: 'Xác nhận đơn',
@@ -116,6 +132,7 @@ export const vi = {
     unavailable: 'Nhà hàng hiện không nhận đơn này.',
     signInRequired: 'Đăng nhập để đặt suất nhé.',
     retryPending: 'Chưa xác nhận được kết quả. Bấm xác nhận lại để kiểm tra cùng đơn, tránh đặt trùng.',
+    priorityWindow: 'Suất miễn phí này đang ưu tiên người có điểm hỗ trợ. Bạn có thể thử lại sau khung giờ ưu tiên.',
     payAtPickup: 'Thanh toán tại quầy khi lấy đồ. Ứng dụng chưa thu tiền trực tuyến.',
     creditTerms: 'Điểm hỗ trợ được trừ khi đặt và hoàn lại nếu huỷ trước hạn lấy.',
   },

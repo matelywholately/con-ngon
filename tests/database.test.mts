@@ -58,9 +58,11 @@ test('Postgres reservation lifecycle and access policies', async (t) => {
     await db.exec((await migration('0007_pickup_qr.sql'))
       .replaceAll('st_y(r.location::geometry)', '(r.location)[1]')
       .replaceAll('st_x(r.location::geometry)', '(r.location)[0]'));
+    await db.exec(await migration('0008_zalo_auth.sql'));
+    await db.exec(await migration('0009_postgis_permissions.sql'));
 
     t.beforeEach(async () => {
-      await db.exec('reset role; truncate auth.users, profiles, restaurants, restaurant_staff, listings, orders, credit_ledger, reports cascade');
+      await db.exec('reset role; truncate auth.users, profiles, restaurants, restaurant_staff, listings, orders, credit_ledger, reports, zalo_login_attempts cascade');
       for (const id of [eater, other, staff, ngo]) await db.query('insert into auth.users(id) values ($1)', [id]);
       await db.query("update profiles set credit_balance_vnd = 40000 where id = $1", [eater]);
       await db.query("update profiles set role = 'ngo' where id = $1", [ngo]);
@@ -73,6 +75,30 @@ test('Postgres reservation lifecycle and access policies', async (t) => {
         values ($1,$2,'Dinner',2,2,20000,'hot',now(),now()-interval '1 minute',now()+interval '2 hours','live')`, [id, restaurant]);
     });
 
+    await t.test('the existing free-meal priority rule survives lifecycle upgrades', async () => {
+      await admin(`create function free_track_priority_until(in_listing listings) returns timestamptz language sql stable as $$
+        select case when in_listing.price_vnd = 0 then in_listing.created_at + interval '30 minutes' else null end;
+      $$`);
+      try {
+        await admin('update listings set price_vnd=0 where id=$1', [firstListing]);
+        await admin('update profiles set credit_balance_vnd=0 where id=$1', [eater]);
+        await login(eater); await assert.rejects(reserve(firstListing, 'cash'), /priority_window/);
+        await admin('update profiles set credit_balance_vnd=20000 where id=$1', [eater]);
+        await login(eater); assert.equal((await reserve(firstListing, 'cash')).rows.length, 1);
+      } finally { await admin('drop function free_track_priority_until(listings)'); }
+    });
+    await t.test('only the auth service can consume the Zalo login budget; it resets after ten minutes', async () => {
+      const hash = 'a'.repeat(64);
+      await login(eater);
+      await assert.rejects(db.query('select allow_zalo_login($1)', [hash]), /permission denied/);
+      await assert.rejects(db.query('select * from zalo_login_attempts'), /permission denied/);
+      await db.exec('reset role; set role service_role');
+      for (let i = 0; i < 21; i++) assert.equal((await db.query<{ allowed: boolean }>('select allow_zalo_login($1) as allowed', [hash])).rows[0]!.allowed, i < 20);
+      assert.equal((await db.query<{ allowed: boolean }>('select allow_zalo_login($1) as allowed', ['invalid'])).rows[0]!.allowed, false);
+      await admin("update zalo_login_attempts set window_start = now() - interval '11 minutes'");
+      await db.exec('set role service_role');
+      assert.equal((await db.query<{ allowed: boolean }>('select allow_zalo_login($1) as allowed', [hash])).rows[0]!.allowed, true);
+    });
     await t.test('new auth users receive a profile; users cannot forge role, balance, or restaurant approval', async () => {
       await login(eater);
       assert.equal((await db.query('select * from profiles')).rows.length, 1);

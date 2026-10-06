@@ -67,6 +67,7 @@ declare
   v_total integer;
   v_code text;
   v_attempts integer := 0;
+  v_priority_until timestamptz;
 begin
   if v_uid is null then raise exception 'not_authenticated'; end if;
   if in_portions is null or in_portions < 1 then raise exception 'invalid_portions'; end if;
@@ -104,6 +105,13 @@ begin
   end if;
   if v_listing.portions_left < in_portions or v_listing.status = 'sold_out' then
     raise exception 'sold_out';
+  end if;
+  -- Keep the deployed free-meal priority programme when that extension exists.
+  if to_regprocedure('public.free_track_priority_until(public.listings)') is not null then
+    execute 'select public.free_track_priority_until($1)' into v_priority_until using v_listing;
+    if v_priority_until is not null and clock_timestamp() < v_priority_until and coalesce(v_balance, 0) <= 0 then
+      raise exception 'priority_window';
+    end if;
   end if;
   v_total := v_listing.price_vnd * in_portions;
   if in_payment_method = 'credit' and v_balance < v_total then

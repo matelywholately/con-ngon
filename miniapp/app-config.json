@@ -1,0 +1,9 @@
+{
+  "app": {
+    "title": "Bữa Kịp", "headerTitle": "Bữa Kịp",
+    "headerColor": "#1f5945", "textColor": "white",
+    "leftButton": "back", "statusBar": "normal", "actionBarHidden": false
+  },
+  "debug": false,
+  "listCSS": [], "listSyncJS": [], "listAsyncJS": []
+}
