@@ -116,6 +116,7 @@ export const vi = {
     unavailable: 'Nhà hàng hiện không nhận đơn này.',
     signInRequired: 'Đăng nhập để đặt suất nhé.',
     retryPending: 'Chưa xác nhận được kết quả. Bấm xác nhận lại để kiểm tra cùng đơn, tránh đặt trùng.',
+    priorityWindow: 'Suất miễn phí này đang ưu tiên người có điểm hỗ trợ. Bạn có thể thử lại sau khung giờ ưu tiên.',
     payAtPickup: 'Thanh toán tại quầy khi lấy đồ. Ứng dụng chưa thu tiền trực tuyến.',
     creditTerms: 'Điểm hỗ trợ được trừ khi đặt và hoàn lại nếu huỷ trước hạn lấy.',
   },

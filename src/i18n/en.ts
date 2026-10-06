@@ -114,6 +114,7 @@ export const en: Dictionary = {
     unavailable: 'The restaurant cannot accept this order right now.',
     signInRequired: 'Sign in to reserve a meal.',
     retryPending: 'The result is unconfirmed. Confirm again to check the same reservation without creating a duplicate.',
+    priorityWindow: 'This free meal currently gives priority to people with support credits. Try again after the priority window.',
     payAtPickup: 'Pay at the counter when collecting. The app does not take online payments yet.',
     creditTerms: 'Support credit is deducted on reservation and refunded if you cancel before pickup closes.',
   },

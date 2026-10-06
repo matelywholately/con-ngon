@@ -59,6 +59,8 @@ test('Postgres reservation lifecycle and access policies', async (t) => {
       .replaceAll('st_y(r.location::geometry)', '(r.location)[1]')
       .replaceAll('st_x(r.location::geometry)', '(r.location)[0]'));
 
+    await db.exec(await migration('0009_postgis_permissions.sql'));
+
     t.beforeEach(async () => {
       await db.exec('reset role; truncate auth.users, profiles, restaurants, restaurant_staff, listings, orders, credit_ledger, reports cascade');
       for (const id of [eater, other, staff, ngo]) await db.query('insert into auth.users(id) values ($1)', [id]);
@@ -73,6 +75,18 @@ test('Postgres reservation lifecycle and access policies', async (t) => {
         values ($1,$2,'Dinner',2,2,20000,'hot',now(),now()-interval '1 minute',now()+interval '2 hours','live')`, [id, restaurant]);
     });
 
+    await t.test('the existing free-meal priority rule survives lifecycle upgrades', async () => {
+      await admin(`create function free_track_priority_until(in_listing listings) returns timestamptz language sql stable as $$
+        select case when in_listing.price_vnd = 0 then in_listing.created_at + interval '30 minutes' else null end;
+      $$`);
+      try {
+        await admin('update listings set price_vnd=0 where id=$1', [firstListing]);
+        await admin('update profiles set credit_balance_vnd=0 where id=$1', [eater]);
+        await login(eater); await assert.rejects(reserve(firstListing, 'cash'), /priority_window/);
+        await admin('update profiles set credit_balance_vnd=20000 where id=$1', [eater]);
+        await login(eater); assert.equal((await reserve(firstListing, 'cash')).rows.length, 1);
+      } finally { await admin('drop function free_track_priority_until(listings)'); }
+    });
     await t.test('new auth users receive a profile; users cannot forge role, balance, or restaurant approval', async () => {
       await login(eater);
       assert.equal((await db.query('select * from profiles')).rows.length, 1);

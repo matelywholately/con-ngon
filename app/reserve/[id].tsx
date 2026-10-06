@@ -100,6 +100,7 @@ export default function Reserve() {
         setError(result.reason === 'sold_out' ? t.reserve.soldOut
           : result.reason === 'past_pickup_window' ? t.reserve.tooLate
           : result.reason === 'insufficient_credit' ? t.reserve.insufficientCredit
+          : result.reason === 'priority_window' ? t.reserve.priorityWindow
           : result.reason === 'restaurant_unavailable' ? t.reserve.unavailable
           : result.reason === 'not_authenticated' ? t.reserve.signInRequired : t.common.errorBody);
         await refreshProfile();

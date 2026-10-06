@@ -3,7 +3,7 @@ import type { Listing, Order, OrderStatus, OrderWithListing, PaymentMethod } fro
 export type ReserveFailure =
   | 'sold_out' | 'past_pickup_window' | 'insufficient_credit'
   | 'restaurant_unavailable' | 'unsupported_payment_method'
-  | 'not_authenticated' | 'request_conflict' | 'unknown';
+  | 'not_authenticated' | 'request_conflict' | 'priority_window' | 'unknown';
 export type ReserveResult =
   | { ok: true; orderId: string; pickupCode: string }
   | { ok: false; reason: ReserveFailure };
@@ -15,9 +15,11 @@ export type CollectFailure =
   | 'restaurant_unavailable' | 'ambiguous_code' | 'unknown';
 
 export function reserveFailure(message: string): ReserveFailure {
+  if (message.includes('listing_not_found') || message.includes('listing_not_live')) return 'restaurant_unavailable';
+  if (message.includes('profile_not_found')) return 'not_authenticated';
   const reasons: ReserveFailure[] = ['sold_out', 'past_pickup_window',
     'insufficient_credit', 'restaurant_unavailable', 'unsupported_payment_method',
-    'not_authenticated', 'request_conflict'];
+    'not_authenticated', 'request_conflict', 'priority_window'];
   return reasons.find((reason) => message.includes(reason)) ?? 'unknown';
 }
 
