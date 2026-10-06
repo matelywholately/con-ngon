@@ -70,7 +70,7 @@ This logic lives in two places that must stay in sync:
 ## Stack
 
 - **Expo SDK 57** — React Native 0.86.3, React 19.2.3, New Architecture
-- **Expo Router v6** with typed routes; route groups `(auth)`, `(eater)`, `(partner)`
+- **Expo Router** with typed routes; customer routes and a dedicated `/restaurant` workspace
 - **TypeScript**, strict, with `noUncheckedIndexedAccess`
 - **Supabase** — Postgres 17 + PostGIS, phone OTP auth, RLS on every table
 - **expo-maps** (Google Maps on Android, Apple Maps on iOS), expo-camera for
@@ -110,7 +110,7 @@ npm run check    # typecheck + tests; run before committing
 app/                     Expo Router routes
   (auth)/                onboarding, phone OTP
   (eater)/               discover, map, orders, profile
-  (partner)/             today, new listing, orders board, handover
+  restaurant/            staff portal, today, listings, orders, QR handover, account
   offer/ reserve/ pass/  the eater's purchase flow
   safety.tsx             the food safety guide, linked from every listing
 src/
@@ -125,6 +125,14 @@ tests/                   node --test over the pure modules
 ```
 
 ## Status
+
+The reservation lifecycle now includes atomic support-credit spending,
+cancellation with stock/credit restoration, retry IDs, and pickup-window
+checks. Customers get a QR pickup pass, accessible from the header and My orders.
+Restaurant staff use `/restaurant` with membership checks and a dedicated
+workspace. Both demo workspaces share the same order state. See
+[the feature assessment](docs/FEATURE_STATUS.md) for remaining work,
+migration instructions and validation limits.
 
 Phase 1–2 of the plan: scaffold and core loop. A partner can list surplus in
 about 30 seconds and verify a handover; an eater can discover, reserve and

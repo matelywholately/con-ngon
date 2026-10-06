@@ -92,7 +92,7 @@ export default function NewListing() {
         allergens: [],
         photoUrl: null,
       });
-      router.replace('/(partner)');
+      router.replace('/restaurant/today');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t.common.errorBody);
     } finally {

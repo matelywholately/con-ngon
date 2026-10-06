@@ -6,12 +6,13 @@ import { Field } from '@/components/Field';
 import { Screen, ScreenTitle } from '@/components/Screen';
 import { useSession } from '@/features/session';
 import { useT } from '@/i18n';
+import { signInDestination } from '@/lib/access';
 import { space } from '@/theme';
 
 export default function VerifyScreen() {
   const { t, f } = useT();
   const router = useRouter();
-  const { phone } = useLocalSearchParams<{ phone: string }>();
+  const { phone, destination } = useLocalSearchParams<{ phone: string; destination?: string }>();
   const { verifyCode, signInWithPhone } = useSession();
 
   const [code, setCode] = useState('');
@@ -26,7 +27,7 @@ export default function VerifyScreen() {
       setError(t.auth.invalidCode);
       return;
     }
-    router.replace('/');
+    router.replace(signInDestination(destination));
   };
 
   return (

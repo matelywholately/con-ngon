@@ -74,6 +74,8 @@ export type Order = {
   status: OrderStatus;
   reserved_at: string;
   collected_at: string | null;
+  credit_used_vnd: number;
+  reservation_request_id: string | null;
 };
 
 export type OrderWithListing = Order & {
@@ -81,7 +83,7 @@ export type OrderWithListing = Order & {
     Listing,
     'title' | 'photo_url' | 'pickup_from' | 'pickup_until' | 'safety_deadline' | 'prepared_at' | 'handling_class'
   > & {
-    restaurant: Pick<Restaurant, 'name' | 'address' | 'lat' | 'lng' | 'pickup_instructions'>;
+    restaurant: Pick<Restaurant, 'id' | 'name' | 'address' | 'lat' | 'lng' | 'pickup_instructions'>;
   };
 };
 

@@ -51,7 +51,7 @@ export function EmptyState({ title, body }: { title: string; body: string }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  body: { flex: 1 },
+  body: { flex: 1, width: '100%', maxWidth: 760, alignSelf: 'center' },
   padded: { paddingHorizontal: space.lg },
   header: { paddingTop: space.md, paddingBottom: space.lg, gap: space.xs },
   subtitle: { maxWidth: 420 },

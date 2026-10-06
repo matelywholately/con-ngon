@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Button } from '@/components/Button';
 import { Countdown } from '@/components/Countdown';
 import { EmptyState, Screen, ScreenTitle } from '@/components/Screen';
@@ -15,7 +15,7 @@ export default function PartnerToday() {
   const { colors } = useTheme();
   const { t, f } = useT();
   const router = useRouter();
-  const { user, setActiveRole } = useSession();
+  const { user } = useSession();
 
   const [listings, setListings] = useState<NearbyListing[]>([]);
   const [orders, setOrders] = useState<PartnerOrder[]>([]);
@@ -23,7 +23,7 @@ export default function PartnerToday() {
 
   const restaurantId = user?.restaurantId;
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     if (!restaurantId) {
       setLoading(false);
       return;
@@ -35,7 +35,7 @@ export default function PartnerToday() {
       })
       .catch(() => undefined)
       .finally(() => setLoading(false));
-  }, [restaurantId]);
+  }, [restaurantId]));
 
   if (loading) {
     return (
@@ -111,15 +111,7 @@ export default function PartnerToday() {
       />
 
       <View style={styles.footer}>
-        <Button label={t.partner.newListing} onPress={() => router.push('/(partner)/new')} />
-        <Button
-          label={t.profile.switchToEater}
-          variant="ghost"
-          onPress={() => {
-            setActiveRole('eater');
-            router.replace('/(eater)');
-          }}
-        />
+        <Button label={t.partner.newListing} onPress={() => router.push('/restaurant/new')} />
       </View>
     </Screen>
   );

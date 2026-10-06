@@ -1,0 +1,3 @@
+[functions.zalo-auth]
+# This endpoint validates a Zalo token before issuing a normal Supabase session.
+verify_jwt = false

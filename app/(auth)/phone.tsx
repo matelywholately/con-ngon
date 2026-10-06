@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Button } from '@/components/Button';
 import { Field } from '@/components/Field';
 import { Screen, ScreenTitle } from '@/components/Screen';
@@ -13,6 +13,7 @@ export default function PhoneScreen() {
   const { colors } = useTheme();
   const { t } = useT();
   const router = useRouter();
+  const { destination } = useLocalSearchParams<{ destination?: string }>();
   const { signInWithPhone } = useSession();
 
   const [raw, setRaw] = useState('');
@@ -33,7 +34,8 @@ export default function PhoneScreen() {
       setError(result.error ?? t.common.errorBody);
       return;
     }
-    router.push({ pathname: '/(auth)/verify', params: { phone } });
+    router.push({ pathname: '/(auth)/verify', params: { phone,
+      ...(destination === 'restaurant' ? { destination: 'restaurant' } : {}) } });
   };
 
   return (
