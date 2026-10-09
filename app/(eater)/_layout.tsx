@@ -1,11 +1,16 @@
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
+import { ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useT } from '@/i18n';
 import { font, useTheme } from '@/theme';
+import { useSession } from '@/features/session';
 
 export default function EaterLayout() {
   const { colors } = useTheme();
   const { t } = useT();
+  const { user, loading } = useSession();
+  if (loading) return <ActivityIndicator color={colors.brand} />;
+  if (!user) return <Redirect href="/(auth)/welcome" />;
 
   return (
     <Tabs

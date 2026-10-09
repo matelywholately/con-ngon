@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import { EmptyState, Screen, ScreenTitle } from '@/components/Screen';
 import { useSession } from '@/features/session';
@@ -16,7 +17,7 @@ export default function PartnerOrders() {
   const [orders, setOrders] = useState<PartnerOrder[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     if (!user?.restaurantId) {
       setLoading(false);
       return;
@@ -25,7 +26,7 @@ export default function PartnerOrders() {
       .then(setOrders)
       .catch(() => setOrders([]))
       .finally(() => setLoading(false));
-  }, [user?.restaurantId]);
+  }, [user?.restaurantId]));
 
   if (loading) {
     return (

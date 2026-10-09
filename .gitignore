@@ -2,10 +2,12 @@
 
 # dependencies
 node_modules/
+.npm-cache/
 
 # Expo
 .expo/
 dist/
+dist-android/
 web-build/
 expo-env.d.ts
 
