@@ -38,6 +38,7 @@ test('Postgres reservation lifecycle and access policies', async (t) => {
         select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid;
       $$;
       grant usage on schema auth, public to anon, authenticated, service_role;
+      alter default privileges in schema public grant execute on functions to anon, authenticated, service_role;
     `);
     const schema = (await migration('0001_schema.sql'))
       .replace('create extension if not exists postgis;', '')
@@ -60,6 +61,7 @@ test('Postgres reservation lifecycle and access policies', async (t) => {
       .replaceAll('st_x(r.location::geometry)', '(r.location)[0]'));
     await db.exec(await migration('0008_zalo_auth.sql'));
     await db.exec(await migration('0009_postgis_permissions.sql'));
+    await db.exec(await migration('0010_rpc_permissions.sql'));
 
     t.beforeEach(async () => {
       await db.exec('reset role; truncate auth.users, profiles, restaurants, restaurant_staff, listings, orders, credit_ledger, reports, zalo_login_attempts cascade');
@@ -73,6 +75,20 @@ test('Postgres reservation lifecycle and access policies', async (t) => {
         (id, restaurant_id, title, portions_total, portions_left, price_vnd, handling_class,
          prepared_at, pickup_from, pickup_until, status)
         values ($1,$2,'Dinner',2,2,20000,'hot',now(),now()-interval '1 minute',now()+interval '2 hours','live')`, [id, restaurant]);
+    });
+
+    await t.test('explicit default grants cannot expose reservation RPCs or trigger helpers', async () => {
+      for (const signature of ['reserve_listing(uuid,integer,payment_method,uuid)', 'cancel_order(uuid)',
+        'collect_order(uuid,text)', 'collect_qr_order(uuid,uuid,text)', 'issue_credit(uuid,integer,text)',
+        'listing_details(uuid)', 'my_orders()']) {
+        const { rows } = await admin("select has_function_privilege('anon',$1,'execute') as anonymous, has_function_privilege('authenticated',$1,'execute') as signed_in", [signature]);
+        assert.equal(rows[0]!.anonymous, false, signature);
+        assert.equal(rows[0]!.signed_in, true, signature);
+      }
+      for (const signature of ['create_user_profile()', 'protect_reserved_window()']) {
+        const { rows } = await admin("select has_function_privilege('anon',$1,'execute') or has_function_privilege('authenticated',$1,'execute') as client", [signature]);
+        assert.equal(rows[0]!.client, false, signature);
+      }
     });
 
     await t.test('the existing free-meal priority rule survives lifecycle upgrades', async () => {

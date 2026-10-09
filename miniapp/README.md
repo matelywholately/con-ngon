@@ -27,6 +27,10 @@ go in `.env.local`. Keep `APP_ID` in `.env` so Zalo CLI can read it. This is the
 **Mini App ID**, not the parent developer App ID. Never put service-role keys,
 Zalo secrets, or developer login tokens in a `VITE_` variable or tracked file.
 
+The connected parent Zalo App is **Còn Ngon**, ID `3804142829431229505`.
+Only the parent ID has been verified; `APP_ID` stays blank until the actual
+Mini App ID is confirmed. Do not use the parent ID as the deployment target.
+
 ```sh
 npm run build
 node scripts/release-check.mjs
@@ -49,13 +53,14 @@ removed entirely from production.
 ## Backend and identity
 
 Apply `supabase/migrations/0005_reservation_lifecycle.sql` through
-`0009_postgis_permissions.sql`, after the original 0001–0004 schema. Inspect
+`0010_rpc_permissions.sql`, after the original 0001–0004 schema. Inspect
 the live database first: this project's September migrations have different
 names after 0004. Do not reapply the seed or overwrite its additional tables.
 The lifecycle upgrade preserves an existing `free_track_priority_until`
 function and its priority rule when present. It also preserves existing
-profile roles and balances. The PostGIS permission migration restricts writes
-to the extension reference table while preserving coordinate lookups.
+profile roles and balances. The PostGIS permission migration targets writes
+to the extension reference table while preserving coordinate lookups; the
+connected project's managed-owner limitation remains in [SUBMISSION.md](SUBMISSION.md).
 
 Deploy `supabase/functions/zalo-auth/index.ts` with `verify_jwt=false` from
 `supabase/config.toml`. The function itself verifies a Zalo access token with
@@ -85,10 +90,13 @@ on reload. It cannot test genuine Zalo login or device storage.
 
 ## Publish
 
-For the connected project, `zalo-auth` version 1 is deployed. Its live CORS and
-origin checks passed; login remains disabled until the parent Zalo credentials
-and required database migrations are configured. The migrations still await
-the specific live-backend approval requested from the owner.
+For the connected project, `zalo-auth` version 1 is deployed. The lifecycle,
+pickup and login-budget upgrade is applied, and the parent Zalo credentials
+are saved in encrypted Supabase Edge Function secrets. Mini App creation is
+pending at the owner's request: the Individual creation form offers no F&B
+category, while the food-service category requires business and food-safety
+documents. Ownership cannot be changed after creation. No agreement has been
+accepted and no version has been uploaded or published.
 
 1. Sign in to [Zalo Developers](https://developers.zalo.me/) using your own Zalo
    account, create the parent developer app, and create a Mini App under it.

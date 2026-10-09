@@ -23,9 +23,13 @@ the integration branch as a third production target.
 Keep shared reservation, safety and QR contracts compatible when backporting
 changes. Both clients may use the same Supabase project. Coordinate database
 migrations once for that project; do not independently replay platform seeds
-or replace existing migration history. The prepared live lifecycle upgrades
-remain pending explicit deployment approval. Branch creation does not apply
-database changes.
+or replace existing migration history. The live lifecycle, pickup and Zalo
+login-budget upgrade was applied on 2026-10-10 as
+`20261009171753_bua_kip_reservations_pickup_zalo_upgrade`. Its existing
+priorities, favourites and push-token tables were preserved. The follow-up
+`bua_kip_rpc_permissions` migration also removed explicit anonymous RPC
+grants. See the [Zalo submission status](https://github.com/matelywholately/con-ngon/blob/codex/zalo-mini-app/miniapp/SUBMISSION.md)
+for remaining release requirements, including the managed PostGIS grants.
 
 ## Local verification
 
