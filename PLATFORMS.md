@@ -11,8 +11,8 @@ workspaces and does not contain the Zalo client, SDK, or identity bridge.
 It is a development branch, not a signed or published Android release.
 
 The Zalo branch starts at `679e5659c264a7aae54d172c6164fa4a3c9a79d6` and
-contains the independent customer Mini App. The Expo source remains available
-for shared types, translations, rules, tests and restaurant operations, but
+contains the independent customer and restaurant Mini App. The Expo source remains available
+for shared types, translations, rules, tests and native restaurant operations, but
 only `miniapp/dist` is packaged for Zalo. Expo and its native dependencies are
 not included in the Mini App build.
 
@@ -56,3 +56,10 @@ Google Play release. For Zalo account setup, open the official
 the parent Zalo app, then create its Mini App. The Mini App ID belongs in
 `miniapp/.env` as `APP_ID`; the parent app secret belongs only in Supabase's
 server-side secrets. Do not share passwords, secrets or login tokens in chat.
+
+The verified Bữa Kịp Mini App ID is `4024811304212206084`, under parent
+App `3804142829431229505`. Testing v3 is uploaded; public release is pending.
+Phone login is blocked by a Zalo IP restriction on the current Supabase
+verification route. The optional owner-controlled relay is prepared in
+`ops/zalo-relay/`, but is not hosted or configured. The Google Play branch
+was not changed by this Zalo repair.

@@ -38,6 +38,12 @@ export function createDemoMarketplace(seed: {
 
   return {
     creditBalance: () => creditVnd,
+    publish(listing: NearbyListing): NearbyListing {
+      const existing = listingFor(listing.id);
+      if (existing) return copyListing(existing);
+      listings.unshift(copyListing(listing));
+      return copyListing(listing);
+    },
     nearby(radiusM: number, now = new Date()): NearbyListing[] {
       sweep(now);
       return listings.filter((listing) => canReserve(listing, now) && listing.distance_m <= radiusM)

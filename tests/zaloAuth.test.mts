@@ -42,18 +42,75 @@ test('concurrent first login re-reads the server-created identity', async () => 
   h.auth.createUser = async args => { await create(args); throw new Error('already exists'); };
   assert.equal((await exchangeZaloToken({ token, appId, secret, ...h })).user.id, await identityId(appId, '67890'));
 });
+
+test('an optional owner-controlled HTTPS relay receives a server proof, never a client-supplied identity', async () => {
+  const h = harness(); const relay = { url: 'https://relay.example/verify', key: 'server-relay-key-at-least-32-characters' };
+  await exchangeZaloToken({ token, appId, secret, auth: h.auth, relay, fetcher: async (url, init) => {
+    assert.equal(url, relay.url); assert.equal(init?.method, 'POST');
+    assert.equal(new Headers(init?.headers).get('authorization'), `Bearer ${relay.key}`);
+    assert.deepEqual(JSON.parse(init?.body as string), { accessToken: token, appsecretProof: createHmac('sha256', secret).update(token).digest('hex') });
+    return Response.json({ error: 0, id: '67890' });
+  } });
+  assert.equal(h.creates(), 1);
+  for (const invalid of [{ ...relay, url: 'http://relay.example/verify' }, { ...relay, key: '' },
+    { ...relay, url: 'https://user:password@relay.example/verify' }]) {
+    await assert.rejects(exchangeZaloToken({ token, appId, secret, auth: h.auth, relay: invalid, fetcher: async () => { throw new Error('must_not_call'); } }), /not_configured/);
+  }
+});
 test('invalid Zalo tokens and unexpected identities cannot receive sessions', async () => {
   const h = harness();
-  for (const response of [Response.json({ error: -1, id: '67890' }), Response.json({ error: 0, id: 'forged' }), new Response('', { status: 401 })]) {
+  for (const response of [Response.json({ error: -1, id: '67890' }), Response.json({ error: 0, id: 'forged' })]) {
     await assert.rejects(exchangeZaloToken({ token, appId, secret, auth: h.auth, fetcher: async () => response }), /invalid_token/);
   }
   assert.equal(h.creates(), 0);
   h.set({ id: await identityId(appId, '67890'), app_metadata: { zalo_app_id: 'another-app' } });
   await assert.rejects(exchangeZaloToken({ token, appId, secret, ...h }), /identity_mismatch/);
 });
+test('relay authentication and upstream failures do not blame customer tokens or issue sessions', async t => {
+  t.mock.method(console, 'warn', () => {});
+  const h = harness();
+  const relay = { url: 'https://relay.example/verify', key: 'server-relay-key-at-least-32-characters' };
+  for (const upstream of [new Response('', { status: 401 }), Response.json({ error: 'upstream_unavailable' }, { status: 503 }),
+    Response.json({ error: 0, id: '67890' }, { status: 500 })]) {
+    const handler = createAuthHandler({ appId, secret, auth: h.auth, relay, allowAttempt: async () => true, fetcher: async () => upstream });
+    const response = await handler(new Request('https://example.test', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: token }) }));
+    assert.equal(response.status, 503); assert.deepEqual(await response.json(), { error: 'login_failed' });
+  }
+  assert.equal(h.creates(), 0);
+});
 test('a session for another account is rejected even after identity verification', async () => {
   const h = harness(); h.auth.issueSession = async () => ({ access_token: 'wrong', refresh_token: 'wrong', user: { id: 'other' } });
   await assert.rejects(exchangeZaloToken({ token, appId, secret, ...h }), /identity_mismatch/);
+});
+
+test('Zalo verification records only numeric diagnostics and distinguishes app configuration errors', async t => {
+  const logs: string[] = [];
+  t.mock.method(console, 'warn', (value: string) => logs.push(value));
+  const h = harness();
+  const handler = createAuthHandler({ appId, secret, auth: h.auth, allowAttempt: async () => true,
+    fetcher: async () => Response.json({ error: -1241, message: `${token} ${secret}` }) });
+  const response = await handler(new Request('https://example.test', { method: 'POST',
+    headers: { 'Content-Type': 'application/json', origin: 'https://h5.zdn.vn' },
+    body: JSON.stringify({ accessToken: token }) }));
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { error: 'zalo_app_mismatch' });
+  assert.deepEqual(logs.map(value => JSON.parse(value)), [{ event: 'zalo_verification_failed', status: 200, code: -1241, ipRestricted: false }]);
+  assert.equal(h.creates(), 0);
+});
+
+test('a Zalo IP restriction is a server failure, never a customer token failure or a session', async t => {
+  const logs: string[] = [];
+  t.mock.method(console, 'warn', (value: string) => logs.push(value));
+  const h = harness();
+  const handler = createAuthHandler({ appId, secret, auth: h.auth, allowAttempt: async () => true,
+    fetcher: async () => Response.json({ error: -501, message: `IP not allowed ${token}` }) });
+  const response = await handler(new Request('https://example.test', { method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: token }) }));
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { error: 'zalo_server_blocked' });
+  assert.deepEqual(logs.map(value => JSON.parse(value)), [{ event: 'zalo_verification_failed', status: 200, code: -501, ipRestricted: true }]);
+  assert.equal(h.creates(), 0);
 });
 test('endpoint validates CORS, input, rate budget and redacts failures', async () => {
   const h = harness(); let allowed = true; let attempts = 0;

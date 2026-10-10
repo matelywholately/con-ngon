@@ -4,31 +4,27 @@ import { vi } from '../../src/i18n/vi';
 import { en } from '../../src/i18n/en';
 import { canReserve, displayedOrderStatus, pickupDeadline, reserveFailure } from '../../src/lib/reservations';
 import { encodePickupQr } from '../../src/lib/pickupQr';
-import type { NearbyListing, OrderWithListing } from '../../src/lib/types';
+import type { OrderWithListing } from '../../src/lib/types';
 import * as api from './client';
 import { clearPending, readPending, requestId, savePending, type Pending } from './pending';
 import { pendingStorage } from './platform';
 import { Icon } from './Icon';
-import { mealCatalog, type MealFilter, type MealSort } from './catalog';
-
-const areas = [
-  { name: 'Cầu Giấy', lat: 21.0313, lng: 105.7902 },
-  { name: 'Ba Đình', lat: 21.035, lng: 105.814 },
-  { name: 'Đống Đa', lat: 21.012, lng: 105.825 },
-];
+import { mealCatalog, type Meal, type MealFilter, type MealSort } from './catalog';
+import { RestaurantWorkspace } from './RestaurantWorkspace';
 const interpolate = (text: string, values: Record<string, string | number>) =>
   text.replace(/\{(\w+)\}/g, (_, key: string) => String(values[key] ?? ''));
-type Page = 'meals' | 'orders' | 'account' | 'detail' | 'pass' | 'privacy' | 'safety';
+type Page = 'meals' | 'orders' | 'account' | 'detail' | 'pass' | 'privacy' | 'safety' | 'restaurant';
 
 export function App() {
   const [locale, setLocale] = useState<'vi' | 'en'>('vi');
   const t = locale === 'vi' ? vi : en;
   const [page, setPage] = useState<Page>('meals');
-  const [area, setArea] = useState(0);
-  const [listings, setListings] = useState<NearbyListing[]>([]);
+  const [area, setArea] = useState('');
+  const [areas, setAreas] = useState<string[]>([]);
+  const [listings, setListings] = useState<Meal[]>([]);
   const [myOrders, setOrders] = useState<OrderWithListing[]>([]);
   const [user, setUser] = useState<api.Account | null>(null);
-  const [listing, setListing] = useState<NearbyListing | null>(null);
+  const [listing, setListing] = useState<Meal | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [portions, setPortions] = useState(1);
   const [payment, setPayment] = useState<'cash' | 'credit'>('cash');
@@ -41,7 +37,7 @@ export function App() {
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<MealFilter>('all');
-  const [sort, setSort] = useState<MealSort>('nearby');
+  const [sort, setSort] = useState<MealSort>('deadline');
   const [history, setHistory] = useState(false);
   const [helpBack, setHelpBack] = useState<Page>('account');
   const [art, setArt] = useState('');
@@ -57,16 +53,15 @@ export function App() {
   const available = mealCatalog(listings, now);
   const visibleMeals = mealCatalog(listings, now, query, filter, sort);
   const shownOrders = history ? myOrders.filter(order => displayedOrderStatus(order, now) !== 'reserved') : active;
-  const minutesLeft = (value: NearbyListing | OrderWithListing['listing']) => Math.max(0, Math.ceil((pickupDeadline(value).getTime() - now.getTime()) / 60000));
+  const minutesLeft = (value: Meal | OrderWithListing['listing']) => Math.max(0, Math.ceil((pickupDeadline(value).getTime() - now.getTime()) / 60000));
   const sample = (id: string) => api.demoMode && art ? { url: art, index: Math.max(0, Math.min(4, Number(id.slice(-1)) - 1)) } : undefined;
 
   async function loadMeals() {
     const request = ++mealRequest.current;
     setLoading(true);
     try {
-      const current = areas[area]!;
-      const meals = await api.meals(current.lat, current.lng);
-      if (request === mealRequest.current) setListings(meals);
+      const [meals, availableAreas] = await Promise.all([api.meals(area), api.areas()]);
+      if (request === mealRequest.current) { setListings(meals); setAreas(availableAreas); }
     } catch { if (request === mealRequest.current) { setListings([]); setError(t.common.errorBody); } }
     finally { if (request === mealRequest.current) setLoading(false); }
   }
@@ -79,7 +74,12 @@ export function App() {
   async function login() {
     setBusy(true); setError('');
     try { await refreshAccount(); }
-    catch { setError(t.zalo.loginFailed); }
+    catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      setError(message === 'invalid_token' ? t.zalo.invalidToken
+        : ['zalo_app_mismatch', 'zalo_server_blocked', 'not_configured'].includes(message) ? t.zalo.loginUnavailable
+        : message === 'rate_limited' ? t.zalo.loginLimited : t.zalo.loginFailed);
+    }
     finally { setBusy(false); }
   }
   useEffect(() => { void loadMeals(); }, [area]);
@@ -112,7 +112,7 @@ export function App() {
     if (next === 'safety' || next === 'privacy') setHelpBack(page);
     setPage(next); setError(''); setCancelConfirm(false); window.scrollTo(0, 0);
   }
-  function openMeal(value: NearbyListing) {
+  function openMeal(value: Meal) {
     setListing(value); setPortions(1); setPayment('cash'); go('detail');
     if (pending?.listingId === value.id) { setPortions(pending.portions); setPayment(pending.paymentMethod); }
   }
@@ -183,7 +183,8 @@ export function App() {
         {pending && <section className="pending card"><strong>{t.zalo.pending}</strong><p>{t.zalo.pendingBody}</p><button className="primary" disabled={busy} onClick={() => void book()}>{busy ? t.common.loading : t.zalo.checkPending}</button></section>}
         {['detail', 'pass', 'privacy', 'safety'].includes(page) && <button className="back" onClick={() => go(page === 'pass' ? 'orders' : page === 'privacy' || page === 'safety' ? helpBack : 'meals')}><Icon name="back" />{t.common.back}</button>}
         {page === 'meals' && <>
-          <div className="area-row"><Icon name="pin" /><label><span>{t.zalo.area}</span><select value={area} onChange={e => setArea(Number(e.target.value))}>{areas.map((value, index) => <option key={value.name} value={index}>{value.name}</option>)}</select></label><button className="icon-button" onClick={() => void loadMeals()} disabled={loading} aria-label={t.zalo.refresh}><Icon name="refresh" /></button></div>
+          <div className="area-row"><Icon name="pin" /><label><span>{t.zalo.area}</span><select value={area} onChange={e => setArea(e.target.value)}><option value="">{t.zalo.allAreas}</option>{areas.map(value => <option key={value} value={value}>{value}</option>)}</select></label><button className="icon-button" onClick={() => void loadMeals()} disabled={loading} aria-label={t.zalo.refresh}><Icon name="refresh" /></button></div>
+          <p className="area-hint">{t.zalo.areaHint}</p>
           <section className="intro"><p className="eyebrow">{t.zalo.nearbyToday}</p><h1>{t.zalo.tagline}</h1></section>
           {active[0] ? <button className="pickup-banner" onClick={() => openPass(active[0]!)}>
             <span><span className="pickup-caption">{t.zalo.pickupReady}</span><strong>{active[0].listing.title}</strong><span>{interpolate(t.zalo.pickupAt, { time: time(pickupDeadline(active[0].listing)) })} · {interpolate(t.zalo.pickupCount, { n: active.length })}</span></span>
@@ -191,7 +192,7 @@ export function App() {
           </button> : <ol className="journey" aria-label={t.zalo.pickupSteps}>{[t.journey.meal, t.journey.reserve, t.journey.pickup].map((label, i) => <li key={label}><span>{i + 1}</span>{label}</li>)}</ol>}
           <label className="search-field"><Icon name="search" /><span className="sr-only">{t.zalo.search}</span><input type="search" aria-label={t.zalo.search} value={query} onChange={e => setQuery(e.target.value)} placeholder={t.zalo.search} />{query && <button type="button" onClick={() => setQuery('')} aria-label={t.zalo.clearFilters}>×</button>}</label>
           <div className="filters" role="group" aria-label={t.zalo.mealChoices}>{(['all', 'vegetarian', 'budget', 'soon'] as const).map(value => <button key={value} aria-pressed={filter === value} onClick={() => setFilter(value)}>{value === 'vegetarian' && <Icon name="leaf" />}{value === 'soon' && <Icon name="clock" />}{t.zalo.filters[value]}</button>)}</div>
-          <div className="section-title"><div><h2>{t.zalo.meals}</h2><span aria-live="polite">{loading ? t.common.loading : interpolate(t.zalo.results, { n: visibleMeals.length })}</span></div><label className="sort"><span className="sr-only">{t.zalo.sort}</span><select value={sort} onChange={e => setSort(e.target.value as MealSort)}>{(['nearby', 'deadline', 'price'] as const).map(value => <option key={value} value={value}>{t.zalo.sorts[value]}</option>)}</select></label></div>
+          <div className="section-title"><div><h2>{t.zalo.meals}</h2><span aria-live="polite">{loading ? t.common.loading : interpolate(t.zalo.results, { n: visibleMeals.length })}</span></div><label className="sort"><span className="sr-only">{t.zalo.sort}</span><select value={sort} onChange={e => setSort(e.target.value as MealSort)}>{(['deadline', 'price'] as const).map(value => <option key={value} value={value}>{t.zalo.sorts[value]}</option>)}</select></label></div>
           {loading ? <div className="meal-grid skeleton-grid" role="status" aria-label={t.common.loading}>{[1, 2, 3, 4].map(value => <div className="skeleton" key={value}><div /><span /><span /></div>)}</div>
             : !visibleMeals.length ? <section className="empty-state"><Icon name="bowl" /><h2>{available.length ? t.zalo.noResults : t.discover.emptyTitle}</h2><p>{available.length ? t.zalo.noResultsBody : t.discover.emptyBody}</p>{available.length > 0 && <button className="primary" onClick={clearFilters}>{t.zalo.clearFilters}</button>}</section>
             : <div className="meal-grid">{visibleMeals.map(value => <button className="meal-card" key={value.id} onClick={() => openMeal(value)}>
@@ -199,7 +200,7 @@ export function App() {
               <div className="meal-copy"><span className="restaurant">{value.restaurant_name}</span><h3>{value.title}</h3>
                 <span className="pickup-time"><Icon name="clock" />{time(value.pickup_from)}–{time(pickupDeadline(value))}</span>
                 <div className="meal-price"><strong>{money(value.price_vnd)}</strong>{value.original_price_vnd && value.original_price_vnd > value.price_vnd && <del>{money(value.original_price_vnd)}</del>}</div>
-                <div className="meal-bottom"><span>{interpolate(t.discover.portionsLeft, { n: value.portions_left })}</span><span>{interpolate(t.zalo.distance, { n: (value.distance_m / 1000).toLocaleString(locale, { maximumFractionDigits: 1 }) })}</span></div>
+                <div className="meal-bottom"><span>{interpolate(t.discover.portionsLeft, { n: value.portions_left })}</span></div>
                 {minutesLeft(value) <= 30 && <span className="deadline"><Icon name="clock" />{interpolate(t.zalo.endsIn, { n: minutesLeft(value) })}</span>}
               </div>
             </button>)}</div>}
@@ -228,14 +229,16 @@ export function App() {
           <button className="full" disabled={busy} onClick={() => void login()}><Icon name="refresh" />{t.pass.refresh}</button>{passActive && <><p className="muted">{t.pass.cancelCreditHint}</p>{cancelConfirm ? <section className="card cancel-confirm" aria-live="polite"><p>{t.zalo.cancelledConfirm}</p><button className="danger full" disabled={busy} onClick={() => void cancelPass()}>{t.zalo.confirmCancel}</button><button className="full" disabled={busy} onClick={() => setCancelConfirm(false)}>{t.zalo.keepOrder}</button></section> : <button className="danger full" disabled={busy} onClick={() => setCancelConfirm(true)}>{t.pass.cancelOrder}</button>}</>}</div>
         </div>}</>}
         {page === 'account' && <><div className="page-heading"><p className="eyebrow">{t.zalo.name}</p><h1>{t.profile.title}</h1></div>{!user ? loginPanel : <section className="credit-card"><div><p>{t.zalo.freeCredit}</p><strong className="balance">{money(user.credit)}</strong></div><Icon name="bowl" /><p className="credit-description">{t.zalo.creditsBody}</p><button disabled={busy} onClick={() => void login()}><Icon name="refresh" />{t.zalo.refresh}</button></section>}
+          <section className="card"><h2>{t.restaurantPortal.title}</h2><p>{t.restaurantPortal.body}</p><button className="primary full" onClick={() => go('restaurant')}>{t.restaurantPortal.open}<Icon name="arrow" /></button></section>
           <section className="card settings"><label>{t.profile.language}<select value={locale} onChange={e => setLocale(e.target.value as 'vi' | 'en')}><option value="vi">{t.common.vietnamese}</option><option value="en">{t.common.english}</option></select></label><button className="settings-row" onClick={() => go('privacy')}><Icon name="shield" />{t.zalo.privacy}<Icon name="arrow" /></button><button className="settings-row" onClick={() => go('safety')}><Icon name="leaf" />{t.safety.title}<Icon name="arrow" /></button></section>
           <section className="help-section"><h2>{t.zalo.help}</h2><p>{t.zalo.helpBody}</p></section>
         </>}
+        {page === 'restaurant' && <>{!user ? <><div className="page-heading"><h1>{t.restaurantPortal.title}</h1><p>{t.restaurantPortal.body}</p></div>{loginPanel}</> : <RestaurantWorkspace key={user.id} account={user} t={t} locale={locale} onMarketplace={() => { go('meals'); void loadMeals(); }} onRefresh={async () => { await refreshAccount(); }} />}</>}
         {page === 'privacy' && <section className="card prose"><Icon name="shield" /><h1>{t.zalo.privacy}</h1><p>{t.zalo.privacyBody}</p></section>}
         {page === 'safety' && <section className="card prose"><Icon name="leaf" /><h1>{t.safety.title}</h1><p>{t.zalo.safetyBody}</p><h2>{t.safety.ruleTitle}</h2><p>{t.safety.ruleBody}</p></section>}
       </>}
     </main>
-    <nav className="tabs" aria-label={t.zalo.name}>{(['meals', 'orders', 'account'] as const).map((value, index) => <button key={value} aria-current={(page === value || value === 'meals' && page === 'detail' || value === 'orders' && page === 'pass' || value === 'account' && (page === 'privacy' || page === 'safety')) ? 'page' : undefined} onClick={() => go(value)}><span className="tab-icon"><Icon name={(['bowl', 'receipt', 'person'] as const)[index]!} />{value === 'orders' && active.length > 0 && <span className="tab-dot" />}</span>{[t.zalo.meals, t.orders.title, t.zalo.account][index]}</button>)}</nav>
+    <nav className="tabs" aria-label={t.zalo.name}>{(['meals', 'orders', 'account'] as const).map((value, index) => <button key={value} aria-current={(page === value || value === 'meals' && page === 'detail' || value === 'orders' && page === 'pass' || value === 'account' && (page === 'privacy' || page === 'safety' || page === 'restaurant')) ? 'page' : undefined} onClick={() => go(value)}><span className="tab-icon"><Icon name={(['bowl', 'receipt', 'person'] as const)[index]!} />{value === 'orders' && active.length > 0 && <span className="tab-dot" />}</span>{[t.zalo.meals, t.orders.title, t.zalo.account][index]}</button>)}</nav>
   </div>;
 }
 

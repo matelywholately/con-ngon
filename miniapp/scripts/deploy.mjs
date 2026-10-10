@@ -9,8 +9,9 @@ try {
   // CLI consumes the root config; Zalo's generated HTML needs the built hashes.
   await writeFile('app-config.json', await readFile('dist/app-config.json'));
   const code = await new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [fileURLToPath(new URL('../node_modules/zmp-cli/index.js', import.meta.url)),
-      'deploy', '--existing', '--testing', '--outputDir', 'dist'], {
+    const child = spawn(process.execPath, ['--require', fileURLToPath(new URL('./require-tls.cjs', import.meta.url)),
+      fileURLToPath(new URL('../node_modules/zmp-cli/index.js', import.meta.url)),
+      'deploy', '--existing', '--testing', '--outputDir', 'dist', ...process.argv.slice(2)], {
       stdio: 'inherit', env: { ...process.env, APP_ID: report.miniAppId }, windowsHide: true,
     });
     child.on('error', reject); child.on('close', resolve);

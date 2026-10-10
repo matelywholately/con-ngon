@@ -29,7 +29,10 @@ Deno.serve(async (request: Request) => {
       return result.data.session;
     },
   };
+  const relayUrl = Deno.env.get('ZALO_GRAPH_RELAY_URL') ?? '';
+  const relayKey = Deno.env.get('ZALO_GRAPH_RELAY_KEY') ?? '';
   return createAuthHandler({ auth, appId: Deno.env.get('ZALO_APP_ID') ?? '', secret: Deno.env.get('ZALO_APP_SECRET') ?? '',
+    ...(relayUrl || relayKey ? { relay: { url: relayUrl, key: relayKey } } : {}),
     origins: (Deno.env.get('ZALO_AUTH_EXTRA_ORIGINS') ?? '').split(',').map(v => v.trim()).filter(Boolean),
     allowAttempt: async tokenHash => {
       const { data, error } = await admin.rpc('allow_zalo_login', { in_token_hash: tokenHash });

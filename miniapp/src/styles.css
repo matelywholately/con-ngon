@@ -97,4 +97,18 @@ fieldset { padding: 0; margin: 0; border: 0; } legend { font-size: 14px; font-we
 @media (max-width: 350px) { main { padding-left: 14px; padding-right: 14px; } .app-header { padding-left: 14px; padding-right: 14px; } .brand { font-size: 21px; } .brand-mark { width: 31px; height: 31px; } .pickup-shortcut { gap: 5px; font-size: 11px; } .meal-grid { gap: 10px; } .meal-price strong { font-size: 17px; } .section-title > div { display: block; } .stepper { width: 140px; } .stepper input { width: 42px; } }
 
 .filters::-webkit-scrollbar { display: none; }
+.listing-form, .listing-form fieldset { display: grid; gap: 18px; }
+.listing-form label, .venue-card label { display: grid; gap: 8px; font-size: 14px; font-weight: 600; }
+.listing-form input, .listing-form select, .listing-form textarea, .venue-card select { width: 100%; min-height: 48px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 12px; color: inherit; font: inherit; }
+.listing-form textarea { min-height: 88px; resize: vertical; }
+.listing-form textarea:focus-visible { outline: 3px solid var(--green); outline-offset: 3px; }
+.listing-form small { font-weight: 400; color: var(--muted); }
+.listing-form .checkbox-label { display: flex; align-items: center; min-height: 48px; }
+.listing-form input[type=checkbox] { width: 22px; min-height: 22px; accent-color: var(--green); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.partner-tabs { margin-bottom: 18px; flex-wrap: wrap; }
+.partner-tabs button { min-width: 65px; }
+.partner-item { margin-top: 14px; }
+.partner-item button, .venue-card p { margin-top: 12px; }
+.success { background: var(--soft); color: var(--green-ink); padding: 14px; margin-bottom: 18px; border-radius: 12px; font-size: 14px; }
 @media (max-width:700px) { .intro { padding:10px 0 15px; } .pickup-banner { padding:13px 15px; margin-bottom:16px; } .pickup-tile > .icon { width:28px; height:28px; } .section-title { margin-top:6px; } }

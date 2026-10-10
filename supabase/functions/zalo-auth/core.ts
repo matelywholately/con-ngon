@@ -5,8 +5,20 @@ export type AuthPort = {
   createUser(args: { id: string; email: string; app_metadata: Record<string, string> }): Promise<AuthUser>;
   issueSession(user: AuthUser): Promise<Session>;
 };
+type GraphRelay = { url: string; key: string };
 
 const hex = (buffer: ArrayBuffer) => Array.from(new Uint8Array(buffer), byte => byte.toString(16).padStart(2, '0')).join('');
+class ZaloVerificationError extends Error {
+  status: number;
+  code: number | null;
+  ipRestricted: boolean;
+  constructor(status: number, code: number | null, message: unknown) {
+    super(code === -501 ? 'zalo_server_blocked' : code === -104 || code === -1241 ? 'zalo_app_mismatch'
+      : code === null || code === 0 || status >= 500 ? 'login_failed' : 'invalid_token');
+    this.status = status; this.code = code;
+    this.ipRestricted = code === -501 && typeof message === 'string' && /\bip\b|country|region|outside|geo(?:graph|location)/i.test(message);
+  }
+}
 export async function zaloProof(token: string, secret: string): Promise<string> {
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
@@ -24,16 +36,27 @@ export async function identityId(appId: string, zaloId: string): Promise<string>
 }
 
 export async function exchangeZaloToken(args: {
-  token: string; appId: string; secret: string; auth: AuthPort; fetcher?: typeof fetch;
+  token: string; appId: string; secret: string; auth: AuthPort; fetcher?: typeof fetch; relay?: GraphRelay;
 }): Promise<Session> {
   if (typeof args.token !== 'string' || args.token.length < 16 || args.token.length > 4096) throw new Error('invalid_token');
-  const response = await (args.fetcher ?? fetch)('https://graph.zalo.me/v2.0/me?fields=id', {
-    headers: { access_token: args.token, appsecret_proof: await zaloProof(args.token, args.secret) },
+  if (args.relay) {
+    try {
+      const url = new URL(args.relay.url);
+      if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || args.relay.key.length < 32) throw new Error();
+    } catch { throw new Error('not_configured'); }
+  }
+  const proof = await zaloProof(args.token, args.secret);
+  const response = await (args.fetcher ?? fetch)(args.relay?.url ?? 'https://graph.zalo.me/v2.0/me?fields=id', {
+    ...(args.relay ? { method: 'POST', headers: { Authorization: `Bearer ${args.relay.key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessToken: args.token, appsecretProof: proof }) }
+      : { headers: { access_token: args.token, appsecret_proof: proof } }),
     signal: AbortSignal.timeout(10000), redirect: 'error',
   });
-  if (!response.ok) throw new Error('invalid_token');
-  const identity = await response.json() as { id?: unknown; error?: number };
-  if (identity.error !== 0 || typeof identity.id !== 'string' || !/^\d{1,30}$/.test(identity.id)) throw new Error('invalid_token');
+  const identity = await response.json().catch(() => null) as { id?: unknown; error?: number; message?: unknown } | null;
+  if (!response.ok || !identity || identity.error !== 0) {
+    throw new ZaloVerificationError(response.status, Number.isSafeInteger(identity?.error) ? identity!.error! : null, identity?.message);
+  }
+  if (typeof identity.id !== 'string' || !/^\d{1,30}$/.test(identity.id)) throw new Error('invalid_token');
   const id = await identityId(args.appId, identity.id);
   let user = await args.auth.findUser(id);
   if (!user) {
@@ -59,6 +82,7 @@ export function permittedOrigin(origin: string | null, extras: string[] = []): s
 
 export function createAuthHandler(args: {
   appId: string; secret: string; auth: AuthPort; fetcher?: typeof fetch; origins?: string[];
+  relay?: GraphRelay;
   allowAttempt: (tokenHash: string) => Promise<boolean>;
 }) {
   return async (request: Request): Promise<Response> => {
@@ -86,8 +110,11 @@ export function createAuthHandler(args: {
       return reply({ access_token: session.access_token, refresh_token: session.refresh_token,
         expires_at: session.expires_at, user: { id: session.user.id } }, 200);
     } catch (error) {
+      if (error instanceof ZaloVerificationError) {
+        console.warn(JSON.stringify({ event: 'zalo_verification_failed', status: error.status, code: error.code, ipRestricted: error.ipRestricted }));
+      }
       const message = error instanceof Error ? error.message : '';
-      return reply({ error: message === 'invalid_token' ? 'invalid_token' : 'login_failed' },
+      return reply({ error: ['invalid_token', 'zalo_app_mismatch', 'zalo_server_blocked', 'not_configured'].includes(message) ? message : 'login_failed' },
         message === 'invalid_token' ? 401 : 503);
     }
   };

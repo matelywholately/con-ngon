@@ -17,8 +17,8 @@ Use the generated `release/bua-kip-production-size.json` for the final size.
 - Operating area: selected districts in Hanoi; start with the verified
   restaurant partners actually serving the pilot.
 
-The owner must provide the developer account, Mini App ID, owner verification,
-actual support contact, and approved brand logo/cover. Complete any privacy,
+The parent account and Mini App ID are verified. The owner must complete owner
+verification and provide actual support contact and approved brand logo/cover. Complete any privacy,
 terms or business-document fields required in the console using real business
 details. Review the draft privacy/help text before ordinary customers use it.
 
@@ -29,16 +29,23 @@ and safety deadline, cash/credit reservation, idempotent retries, active/past
 orders, header pickup shortcut, QR/manual-code pass, cancellation/refund,
 credit balance, Vietnamese/English and privacy/safety pages.
 
-Outside this package: map/GPS, restaurant operations, camera scanner, native
-app downloads, and online wallet/payment integrations. Staff scan the same QR
-format through the existing restaurant workspace. No developer role controls
+Restaurant features: account entry, approved own-venue selection, meal
+publishing with safe retry recovery, today’s listings, reserved orders, Zalo
+SDK QR scanning and manual-code handover. Existing RLS/RPCs enforce staff
+membership, stock, credit and pickup deadlines; a client cannot assign itself
+to a restaurant. An administrator must assign actual verified staff accounts.
+
+Outside this package: map/GPS, native app downloads and online wallet/payment
+integrations. No developer role controls
 ship in this client. Images are remote HTTPS resources; fonts are system fonts.
 
 Local verification covers database/RLS and pure logic tests, auth verification
 and CORS, package size/bootstrap references, owner-scoped pending requests, and
-browser reservations/QR/cancellation. Real Zalo login, Native Storage, app
-permissions, staff-device scanning and non-admin access still require the
-registered Mini App and physical-device checks. See [README](README.md).
+browser posting → credit reservation → handover, QR/cancellation and a
+390-pixel mobile viewport. The final root check passes 73 tests; Mini App
+check passes 13 tests and its production size checks. Physical-device
+Native Storage, scanning and non-admin access remain to be checked. Real
+Zalo login is blocked as described below. See [README](README.md).
 
 ## Live setup — 2026-10-10
 
@@ -57,7 +64,7 @@ orders and credit balances. The database had no profiles or orders.
 The follow-up `bua_kip_rpc_permissions` migration was also applied and its
 effective grants verified: customer RPCs require the authenticated role,
 trigger helpers reject both client roles, and only the service role can run
-the Zalo login budget. All 67 root tests passed with Supabase-style explicit
+the Zalo login budget. Root tests pass with Supabase-style explicit
 default function grants enabled in the database fixture.
 
 | Source | Effect |
@@ -69,25 +76,36 @@ default function grants enabled in the database fixture.
 | `0009_postgis_permissions.sql` | Attempts to restrict PostGIS reference writes; see managed-owner limitation below |
 | `0010_rpc_permissions.sql` | Remove explicit anonymous RPC grants and client access to trigger helpers |
 
-The `zalo-auth` Edge Function is deployed as version 1 and is ACTIVE. The
-parent Zalo App is **Còn Ngon**, ID `3804142829431229505`. Its existing ID and
-secret are saved only in encrypted Supabase Edge Function secrets. The public
-API key is configured locally. No Zalo secret is in source or the Mini App.
-The live endpoint now rejects a fake token with HTTP 401 `invalid_token`,
-instead of reporting missing configuration; it returns the expected Zalo
-CORS header and issued no session. Real device login remains untested.
+The parent Zalo App is **Còn Ngon**, ID `3804142829431229505`, ACTIVE, with
+app-secret proof enabled and basic profile permission approved. Its ID and
+secret match the encrypted Supabase settings (compared privately by digest).
+The verified **Bữa Kịp** Mini App ID is `4024811304212206084`; local `APP_ID`
+uses this deployment target. No Zalo secret is in source or the client.
 
-At initial inspection the parent app had **zero Mini Apps** and was not
-activated. The supplied ID is not a Mini App ID; local `APP_ID` is blank. The Individual creation form was
-prepared with Bữa Kịp's name and description, but offers only Other and Life
-utilities. Zalo's F&B verification lists business registration and food-safety
-documents. The owner asked to keep creation pending until that ownership path
-is resolved. Ownership is immutable after creation. No programme agreement,
-owner identity submission, Testing upload or publication was completed by
-this setup. Later, a management URL for Mini App `4024811304212206084` appeared
-in the existing tab, but browser control was detached before its name,
-ownership or status could be verified. Inspect that existing instance before
-creating another Mini App; do not configure an unverified deployment target.
+Real phone login attempts returned Zalo code `-501`. The safe function log
+at `2026-10-10T05:10:56.526Z` recorded HTTP 200, code -501 and
+`ipRestricted=true`. It records no raw provider message, identity or token.
+The current Supabase egress route is rejected by Zalo; no session was issued.
+The client now reports a server problem instead of incorrectly asking the
+user to open Zalo. A prepared optional authenticated HTTPS relay can move
+Graph verification to an owner-controlled IP Zalo accepts, while keeping
+proof generation and session issuance on Supabase. It is **not hosted or
+configured**, and the owner has no Vietnam server yet. A Vietnam host still
+requires an actual egress test; do not treat its location as guaranteed access.
+See [relay setup](../ops/zalo-relay/README.md). Login is not fixed yet.
+
+Testing **v3** was uploaded securely and verified in the console on
+2026-10-10 at 12:12:41. The console reports 0.132 MB compressed; local package
+limits use uncompressed assets instead. v3 includes the pickup-area and
+restaurant changes. The local ZIP includes current local brand assets.
+No public review submission, agreement acceptance or publication was made
+by this repair. Verification/category documents must still use the actual
+owner's details.
+
+All six approved restaurants currently have district Cầu Giấy; there are no
+active meals or staff memberships. The area selector is dynamic and includes
+all approved districts when partners are added. Browser restaurant-flow
+checks used labelled fixtures, not invented live meals or staff access.
 
 PostGIS limitation: `public.spatial_ref_sys` belongs to `supabase_admin`.
 The connected `postgres` role cannot change that owner's grants, so the

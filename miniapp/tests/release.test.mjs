@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, stat } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
 import { checkLimits, checkRelease } from '../scripts/limits.mjs';
 import { readPending, savePending, clearPending, requestId } from '../src/pending.ts';
 
@@ -15,6 +16,12 @@ test('release rejects demo, missing backend and missing real Mini App ID', () =>
   assert.throws(() => checkRelease({ ...ready, demo: true }), /Demo/);
   assert.throws(() => checkRelease({ ...ready, backendConfigured: false }), /Supabase/);
   assert.throws(() => checkRelease({ ...ready, miniAppId: '' }), /APP_ID/);
+});
+
+test('the deploy launcher prevents the CLI from disabling TLS verification', () => {
+  const result = spawnSync(process.execPath, ['--require', './scripts/require-tls.cjs', '-e',
+    'process.env.NODE_TLS_REJECT_UNAUTHORIZED="0";process.stdout.write(process.env.NODE_TLS_REJECT_UNAUTHORIZED)'], { encoding: 'utf8' });
+  assert.equal(result.status, 0); assert.equal(result.stdout, '1');
 });
 test('pending reservations survive retries, are scoped to an owner and reject corrupt data', () => {
   const values = new Map();

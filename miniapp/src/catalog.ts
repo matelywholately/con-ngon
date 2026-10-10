@@ -1,13 +1,14 @@
 import { canReserve, pickupDeadline } from '../../src/lib/reservations.ts';
-import type { NearbyListing } from '../../src/lib/types';
+import type { Listing, NearbyListing } from '../../src/lib/types';
 
+export type Meal = Listing & Pick<NearbyListing, 'restaurant_name' | 'restaurant_address'>;
 export type MealFilter = 'all' | 'vegetarian' | 'budget' | 'soon';
-export type MealSort = 'nearby' | 'deadline' | 'price';
+export type MealSort = 'deadline' | 'price';
 export const searchText = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   .replace(/[đĐ]/g, 'd').toLocaleLowerCase('vi').trim();
 
 /** Filter actual listing fields; never infer dietary information from a dish name. */
-export function mealCatalog(listings: NearbyListing[], now: Date, query = '', filter: MealFilter = 'all', sort: MealSort = 'nearby') {
+export function mealCatalog(listings: Meal[], now: Date, query = '', filter: MealFilter = 'all', sort: MealSort = 'deadline') {
   const words = searchText(query).split(/\s+/).filter(Boolean);
   return listings.filter(value => {
     if (!canReserve(value, now)) return false;
@@ -17,8 +18,11 @@ export function mealCatalog(listings: NearbyListing[], now: Date, query = '', fi
     const haystack = searchText(`${value.title} ${value.restaurant_name} ${value.restaurant_address}`);
     return words.every(word => haystack.includes(word));
   }).sort((a, b) => {
-    if (sort === 'price') return a.price_vnd - b.price_vnd || a.distance_m - b.distance_m;
-    if (sort === 'deadline') return pickupDeadline(a).getTime() - pickupDeadline(b).getTime() || a.distance_m - b.distance_m;
-    return a.distance_m - b.distance_m;
+    if (sort === 'price' && a.price_vnd !== b.price_vnd) return a.price_vnd - b.price_vnd;
+    return pickupDeadline(a).getTime() - pickupDeadline(b).getTime();
   });
+}
+
+export function pickupAreas(restaurants: { district: string }[]): string[] {
+  return [...new Set(restaurants.map(value => value.district.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'));
 }

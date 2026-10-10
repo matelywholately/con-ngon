@@ -4,10 +4,11 @@ Production target branch: `codex/zalo-mini-app`. The native Google Play app
 has its own `codex/google-play` branch. See [PLATFORMS.md](../PLATFORMS.md)
 for the split and [DESIGN.md](DESIGN.md) for the original Bistro-inspired UI.
 
-A small React/Vite customer client sharing the marketplace's safety rules,
-reservation logic and pickup QR format. Restaurant staff keep the existing
-Expo workspace. This build does not include Expo, maps, camera scanning,
-custom fonts, restaurant publishing, or online payment providers.
+A small React/Vite client sharing the marketplace's safety rules,
+reservation logic and pickup QR format. Account → For restaurants opens the
+staff workspace for posting meals, viewing orders and QR/manual-code
+handover. This build does not include Expo, maps, custom fonts or online
+payment providers. Camera scanning uses the existing Zalo SDK.
 
 ## Run and build
 
@@ -27,9 +28,9 @@ go in `.env.local`. Keep `APP_ID` in `.env` so Zalo CLI can read it. This is the
 **Mini App ID**, not the parent developer App ID. Never put service-role keys,
 Zalo secrets, or developer login tokens in a `VITE_` variable or tracked file.
 
-The connected parent Zalo App is **Còn Ngon**, ID `3804142829431229505`.
-Only the parent ID has been verified; `APP_ID` stays blank until the actual
-Mini App ID is confirmed. Do not use the parent ID as the deployment target.
+The connected, active parent Zalo App is **Còn Ngon**, ID
+`3804142829431229505`. Its verified Mini App is **Bữa Kịp**, ID
+`4024811304212206084`; use that Mini App ID as `APP_ID`.
 
 ```sh
 npm run build
@@ -73,6 +74,8 @@ Supabase Edge Function secrets** in the dashboard:
 | `ZALO_APP_ID` | Parent Zalo Developer App ID |
 | `ZALO_APP_SECRET` | Parent app secret; never share in chat or client files |
 | `ZALO_AUTH_EXTRA_ORIGINS` | Optional, explicit test origin; omit in production |
+| `ZALO_GRAPH_RELAY_URL` | Optional owner-controlled HTTPS verification endpoint |
+| `ZALO_GRAPH_RELAY_KEY` | Required with relay URL; server-only shared credential |
 
 Supabase supplies its normal URL, anon key and service-role environment values
 to Edge Functions. The bridge uses a stable app-scoped account identifier;
@@ -80,23 +83,43 @@ new Zalo accounts receive the standard zero-credit profile. It never merges
 phone accounts or grants credits based on client input. Existing phone-user
 account linking requires a separate verified process.
 
+Real phone login currently returns Zalo `-501` with an IP restriction on the
+Supabase verification route. The parent credentials were privately compared
+and match; basic profile permission is approved. An optional relay is
+prepared in [ops/zalo-relay](../ops/zalo-relay/README.md), but no suitable host
+or relay settings exist yet. Login remains blocked until the server route
+is accepted by Zalo and verified on a phone. Do not disable token verification.
+
 Tokens stay in memory. The SDK's Native Storage saves only the owner-scoped
-pending reservation arguments and request ID, before sending the request.
+pending reservation or listing arguments and request ID, before sending the request.
 Uncertain responses keep that same ID and choices. Opening again can recover
 the pending request after Zalo login. On a device where Native Storage is
 unavailable, sending a new reservation fails rather than losing retry safety.
+Restaurant posting uses the same owner/venue-scoped retry protection and
+retains the original request if the response is uncertain. Restaurant
+membership is checked through existing RLS; opening the workspace never
+grants a role. An administrator must assign the verified account to its
+actual restaurant in `restaurant_staff`. The access screen shows the account
+reference to support that assignment; no seed restaurant is assigned automatically.
+
+Pickup areas come from approved restaurant records, with an all-areas option.
+There is no fixed three-district list or fabricated distance ranking. At the
+2026-10-10 inspection, all six approved restaurants were in Cầu Giấy, there
+were no active meals and no staff memberships. More areas appear as approved
+partners are added; the client does not invent service coverage.
+
 Browser preview uses memory for both fixtures and pending requests and resets
 on reload. It cannot test genuine Zalo login or device storage.
 
 ## Publish
 
-For the connected project, `zalo-auth` version 1 is deployed. The lifecycle,
-pickup and login-budget upgrade is applied, and the parent Zalo credentials
-are saved in encrypted Supabase Edge Function secrets. Mini App creation is
-pending at the owner's request: the Individual creation form offers no F&B
-category, while the food-service category requires business and food-safety
-documents. Ownership cannot be changed after creation. No agreement has been
-accepted and no version has been uploaded or published.
+Testing **version 3** was uploaded and verified in the Mini App console on
+2026-10-10. It contains dynamic pickup areas and the restaurant workspace.
+This is not a public release. The lifecycle, pickup and login-budget upgrade
+is applied, and the parent credentials are stored in encrypted Supabase
+Edge Function secrets. Owner/category verification and public review remain
+the owner's responsibility. No agreement or public submission was completed
+by this repair. See [SUBMISSION.md](SUBMISSION.md) for the current blockers.
 
 1. Sign in to [Zalo Developers](https://developers.zalo.me/) using your own Zalo
    account, create the parent developer app, and create a Mini App under it.
@@ -110,7 +133,8 @@ accepted and no version has been uploaded or published.
    Do not commit the resulting `ZMP_TOKEN` or `.env` file.
 4. Run `npm run deploy:testing`. The wrapper passes the verified Mini App ID
    and built asset list to `zmp deploy --existing --testing --outputDir dist`,
-   then restores the source config. This uploads a **Testing** version; it
+   then restores the source config. Its Node preload keeps TLS certificate
+   verification enabled despite the official CLI's default. This uploads a **Testing** version; it
    does not publish to ordinary users.
 5. Test on physical Android and iOS phones in Zalo, including a non-admin
    account. Verify login, Native Storage permission/support, browse, cash
