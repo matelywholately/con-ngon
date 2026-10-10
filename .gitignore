@@ -2,10 +2,12 @@
 
 # dependencies
 node_modules/
+.npm-cache/
 
 # Expo
 .expo/
 dist/
+dist-android/
 web-build/
 expo-env.d.ts
 
@@ -32,6 +34,11 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+miniapp/release/
+miniapp/dist/
+miniapp/size-report.json
+miniapp/.build-metadata.json
 
 # typescript
 *.tsbuildinfo

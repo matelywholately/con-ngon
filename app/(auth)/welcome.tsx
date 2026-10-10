@@ -77,6 +77,7 @@ export default function Welcome() {
 
       <View style={styles.footer}>
         <Button label={t.onboarding.start} onPress={() => router.push('/(auth)/phone')} />
+        <Button label={t.restaurantPortal.title} variant="ghost" onPress={() => router.push('/restaurant')} />
       </View>
     </Screen>
   );

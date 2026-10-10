@@ -78,12 +78,13 @@ create table listings (
   pickup_from        timestamptz not null,
   pickup_until       timestamptz not null,
   safety_deadline    timestamptz generated always as (
-    prepared_at + (case handling_class
+    -- UTC timestamp arithmetic is immutable; timestamptz + interval is not.
+    ((prepared_at at time zone 'UTC') + (case handling_class
       when 'hot'          then interval '180 minutes'
       when 'chilled'      then interval '1320 minutes'
       when 'ambient'      then interval '660 minutes'
       when 'shelf_stable' then interval '4320 minutes'
-    end)
+    end)) at time zone 'UTC'
   ) stored,
   status             listing_status not null default 'draft',
   allergens          text[] not null default '{}',

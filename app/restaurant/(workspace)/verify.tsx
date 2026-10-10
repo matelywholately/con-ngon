@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
@@ -8,6 +8,7 @@ import { Screen, ScreenTitle } from '@/components/Screen';
 import { useSession } from '@/features/session';
 import { useT } from '@/i18n';
 import { collectOrder } from '@/lib/queries';
+import { decodePickupQr } from '@/lib/pickupQr';
 import { radius, space, type, useTheme } from '@/theme';
 
 /**
@@ -30,21 +31,34 @@ export default function VerifyPickup() {
     { kind: 'ok'; name: string } | { kind: 'error'; message: string } | null
   >(null);
   const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false);
 
-  const verify = async (value: string) => {
-    if (!user?.restaurantId || busy) return;
+  const verify = async (value: string, orderId?: string) => {
+    if (!user?.restaurantId || inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
-    const outcome = await collectOrder(user.restaurantId, value);
-    setBusy(false);
-    setScanning(false);
+    try {
+      const outcome = await collectOrder(user.restaurantId, value, orderId);
 
-    if (outcome.ok) {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setResult({ kind: 'ok', name: outcome.order.eater_name ?? '—' });
-      setCode('');
-    } else {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setResult({ kind: 'error', message: t.partner.wrongCode });
+      if (outcome.ok) {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setResult({ kind: 'ok', name: outcome.order.eater_name ?? '' });
+        setCode('');
+      } else {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        setResult({ kind: 'error', message:
+          outcome.reason === 'past_pickup_window' ? t.partner.pickupExpired
+          : outcome.reason === 'pickup_not_started' ? t.partner.pickupNotStarted
+          : outcome.reason === 'restaurant_unavailable' ? t.partner.pickupUnavailable
+          : outcome.reason === 'ambiguous_code' ? t.partner.ambiguousCode
+          : outcome.reason === 'code_not_found' ? t.partner.wrongCode : t.common.errorBody });
+      }
+    } catch {
+      setResult({ kind: 'error', message: t.common.errorBody });
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+      setScanning(false);
     }
   };
 
@@ -57,17 +71,29 @@ export default function VerifyPickup() {
     setScanning(true);
   };
 
+  const scan = (data: string) => {
+    if (inFlight.current) return;
+    const pass = decodePickupQr(data);
+    if (!pass || pass.restaurantId !== user?.restaurantId) {
+      setScanning(false);
+      setResult({ kind: 'error', message: pass ? t.partner.wrongRestaurantQr : t.partner.invalidQr });
+      return;
+    }
+    void verify(pass.code, pass.orderId);
+  };
+
   return (
     <Screen edges={['top']}>
-      <ScreenTitle title={t.partner.verifyTitle} subtitle={t.partner.enterCode} />
+      <ScreenTitle title={t.partner.verifyTitle} />
 
       {scanning ? (
         <View style={styles.scanner}>
           <CameraView
             style={StyleSheet.absoluteFill}
             barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-            onBarcodeScanned={({ data }) => void verify(data.slice(-4))}
+            onBarcodeScanned={({ data }) => scan(data)}
           />
+          <Text style={[type.small, styles.scanHint]}>{t.partner.scanHint}</Text>
         </View>
       ) : (
         <View style={styles.form}>
@@ -100,7 +126,7 @@ export default function VerifyPickup() {
                 ]}
               >
                 {result.kind === 'ok'
-                  ? f(t.partner.verified, { name: result.name })
+                  ? result.name ? f(t.partner.verified, { name: result.name }) : t.partner.verifiedGeneric
                   : result.message}
               </Text>
             </View>
@@ -135,6 +161,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#000',
   },
+  scanHint: { color: '#ffffff', backgroundColor: '#000000', padding: space.md },
   result: { padding: space.lg, borderRadius: radius.lg },
   footer: { marginTop: 'auto', gap: space.sm, paddingVertical: space.lg },
 });
