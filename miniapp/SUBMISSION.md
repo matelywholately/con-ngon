@@ -42,12 +42,23 @@ ship in this client. Images are remote HTTPS resources; fonts are system fonts.
 Local verification covers database/RLS and pure logic tests, auth verification
 and CORS, package size/bootstrap references, owner-scoped pending requests, and
 browser posting → credit reservation → handover, QR/cancellation and a
-390-pixel mobile viewport. The final root check passes 73 tests; Mini App
+390-pixel mobile viewport. The final root check passes 77 tests; Mini App
 check passes 13 tests and its production size checks. Physical-device
 Native Storage, scanning and non-admin access remain to be checked. Real
 Zalo login is blocked as described below. See [README](README.md).
 
 ## Live setup — 2026-10-10
+
+The separate Mini App webhook receiver is
+`https://euvndmdcfijjpfofpvjz.supabase.co/functions/v1/zalo-webhook`.
+Its service-only inbox migration is applied, and its signature, tamper,
+fail-closed and RLS tests pass. It requires `ZALO_MINIAPP_API_KEY` from the
+parent app's **Open APIS** page; the console currently reveals that key only
+after the setup fields are completed. The key is not configured yet, so POST
+events remain disabled. No Zalo settings were saved by this setup. The
+receiver durably queues verified consent requests for owner review, without
+automatic account deletion. Establish that review process before release.
+See [webhook setup](../supabase/functions/zalo-webhook/README.md).
 
 The connected Supabase project is `euvndmdcfijjpfofpvjz` (`con-ngon`, Singapore).
 Its September migration history differs from this checkout after 0004. Keep

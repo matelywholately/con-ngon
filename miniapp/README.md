@@ -113,6 +113,12 @@ on reload. It cannot test genuine Zalo login or device storage.
 
 ## Publish
 
+For the Zalo Mini App Open APIS webhook URL, use
+`https://euvndmdcfijjpfofpvjz.supabase.co/functions/v1/zalo-webhook`.
+The signed receiver requires server-side `ZALO_MINIAPP_API_KEY` from Zalo's
+Open APIS page; it is not the parent app secret. The owner still needs to
+complete that key setup. See [webhook setup and consent-request review](../supabase/functions/zalo-webhook/README.md).
+
 Testing **version 3** was uploaded and verified in the Mini App console on
 2026-10-10. It contains dynamic pickup areas and the restaurant workspace.
 This is not a public release. The lifecycle, pickup and login-budget upgrade

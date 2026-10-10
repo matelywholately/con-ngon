@@ -1,3 +1,7 @@
 [functions.zalo-auth]
 # This endpoint validates a Zalo token before issuing a normal Supabase session.
 verify_jwt = false
+
+[functions.zalo-webhook]
+# Zalo sends its Open API signature; the handler verifies it before any write.
+verify_jwt = false
